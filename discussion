@@ -1,0 +1,5 @@
+What data do we want to store:
+sql DB with Users(id, screen_name, name) and Follows(id1, id2)
+Is this enough?
+
+
