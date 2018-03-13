@@ -3,3 +3,12 @@ sql DB with Users(id, screen_name, name) and Follows(id1, id2)
 Is this enough?
 
 
+
+Supported actions in server:
+- retrieve list of followers (of specific user)
+- retrieve list of following (of specific user)
+
+
+
+Should the server also support returning result to user? (results might be very large)
+
