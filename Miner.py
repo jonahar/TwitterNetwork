@@ -1,5 +1,6 @@
 import tweepy
-from DB import DB
+from DBManager import DBManager
+import logging
 
 
 class Miner:
@@ -11,11 +12,12 @@ class Miner:
     def __init__(self, keys, database_file):
         """
         Construct a new Miner for retrieving data from Twitter
-        :param keys: dictionary with the needed keys (consumer_secret, consumer_token.json,
-                                                        access_token.json, access_token_secret)
+        :param keys: dictionary with the needed keys (consumer_secret, consumer_token,
+                                                        access_token, access_token_secret)
         :param database_file: string, filename of the database that the miner should work with.
+        :param log_file: filename of log file.
         """
-        self.db = DB(database_file)
+        self.db = DBManager(database_file)
 
         # make connection to twitter API
         consumer_secret = keys["consumer_secret"]
@@ -26,7 +28,7 @@ class Miner:
         auth.set_access_token(access_token, access_token_secret)
         self.api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
-    def get_following_ids(self, user):
+    def mine_following_ids(self, user):
         """
         get all the ids of users that the given user is following.
         This function does not return the result, but is reflected in the database.
@@ -41,9 +43,10 @@ class Miner:
             # page is a list of ids
             self.db.add_follows([user.id], page)
             total_following += len(page)
-        print("Added {0} users being followed by {1}".format(total_following, user.name))
+        logging.info(
+            'miner added {0} users being followed by {1}'.format(total_following, user.name))
 
-    def get_followers_ids(self, user):
+    def mine_followers_ids(self, user):
         """
         get all the followers of the given user.
         This function does not return the result, but is reflected in the database.
@@ -58,4 +61,7 @@ class Miner:
             # page is a list of ids
             self.db.add_follows(page, [user.id])
             total_followers += len(page)
-        print("Added {0} users that follows {1}".format(total_followers, user.name))
+        logging.info("miner added {0} users that follows {1}".format(total_followers, user.name))
+
+# todo total_following and total_followers numbers are inaccurate. not necessarily all of them
+# were added. some may have already exist

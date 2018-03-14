@@ -2,6 +2,8 @@ What data do we want to store:
 sql DB with Users(id, screen_name, name) and Follows(id1, id2)
 Is this enough? Do we want to store an entire User object?
 
+should find a better solution than sqlite3 (don't work with sql statements in python)
+
 
 Supported actions in server:
 - retrieve list of followers (of specific user)
@@ -13,8 +15,7 @@ Should the server also support returning result to user(results might be very la
 only affect the database?
 
 
-Logging: Should there be a different logger for the server and the miner?
-
-
 Multithreading: should we think about it? What must we consider for working with the database and
 make API calls using tweepy?
+
+
