@@ -14,8 +14,7 @@ def init_logger():
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
 
-
-class RESTserver:
+class RESTServer:
     def __init__(self, conf_file):
         """
         creating a REST server instance. server is established according to the given
@@ -40,17 +39,32 @@ class RESTserver:
             logging.info('server index was accessed')
             return "Welcome to TwitterMine REST server!"
 
-        @self.app.route('/mine/following_ids/<string:user>', methods=['POST'])
-        def mine_following_ids(user):
+        @self.app.route('/mine/following_ids', methods=['POST'])
+        def mine_following_ids():
             logging.info('got request to mine following ids')
-            self.miner.mine_following_ids(user)
+            user, limit = self.parse_params(request.json)
+            self.miner.mine_following_ids(user, limit)
             return jsonify({'success': True}), 201
 
-        @self.app.route('/mine/followers_ids/<string:user>', methods=['POST'])
-        def mine_followers_ids(user):
+        @self.app.route('/mine/followers_ids', methods=['POST'])
+        def mine_followers_ids():
             logging.info('got request to mine followers ids')
-            self.miner.mine_followers_ids(user)
+            user, limit = self.parse_params(request.json)
+            self.miner.mine_followers_ids(user, limit)
             return jsonify({'success': True}), 201
+
+    def parse_params(self, json_params):
+        """
+        parsing the parameters of the mining requests
+
+        :param json_params: a dictionary with key 'user' and an optional key 'limit'
+        :return: a tuple (user, limit)
+        """
+        if not json_params or 'user' not in json_params:
+            abort(400)
+        user = json_params['user']
+        limit = json_params['limit'] if 'limit' in json_params else None
+        return user, limit
 
     def run(self, debug=True, port=5000):
         self.app.run(debug=debug, port=port, threaded=True)
@@ -59,7 +73,7 @@ class RESTserver:
 if __name__ == '__main__':
     init_logger()
     server_conf_file = '/cs/usr/jonahar/PythonProjects/TwitterMine/server.conf'
-    server = RESTserver(server_conf_file)
+    server = RESTServer(server_conf_file)
     server.run()
 
 

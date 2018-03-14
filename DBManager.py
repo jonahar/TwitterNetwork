@@ -33,14 +33,17 @@ class DBManager:
         """
         if not os.path.isfile(database):
             raise FileNotFoundError("database doesn't exist")
-        self.conn = sqlite3.connect(database, check_same_thread=False)
+        self._database = database
 
     def add_user(self, user_data):
         """
         :param user_data: tuple (id, screen_name, name)
         """
         id, scr, name = user_data
-        self.conn.execute(add_user_query, (id, scr, name, id))
+        conn = sqlite3.connect(self._database, check_same_thread=False)
+        conn.execute(add_user_query, (id, scr, name, id))
+        conn.commit()
+        conn.close()
 
     def add_follows(self, id1_list, id2_list):
         """
@@ -51,10 +54,12 @@ class DBManager:
         :param id2_list: list of integers
         :return:
         """
+        conn = sqlite3.connect(self._database, check_same_thread=False)
         for id1 in id1_list:
             for id2 in id2_list:
-                self.conn.execute(add_follows_query, (id1, id2, id1, id2))
-        self.conn.commit()
+                conn.execute(add_follows_query, (id1, id2, id1, id2))
+        conn.commit()
+        conn.close()
 
     def get_friends(self, attr='id'):
         """
@@ -68,5 +73,8 @@ class DBManager:
             q = get_friends_query
         else:
             q = get_friends_by_attr_query
-        cursor = self.conn.execute(q, (attr, attr))
-        return cursor.fetchall()
+        conn = sqlite3.connect(self._database, check_same_thread=False)
+        cursor = conn.execute(q, (attr, attr))
+        res = cursor.fetchall()
+        conn.close()
+        return res
