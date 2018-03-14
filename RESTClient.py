@@ -3,8 +3,10 @@ import json
 
 headers = {'content-type': 'application/json'}
 
-url = 'http://localhost:5000/mine/following_ids'
+url = 'http://localhost:5000/mine/friends_ids'
 data = json.dumps({'user': 'realJonaHarris', 'limit': 5})
+
+response = requests.post(url, data=data, headers=headers)
 
 url = 'http://localhost:5000/mine/followers_ids'
 data = json.dumps({'user': 'realDonaldTrump', 'limit': 20})
@@ -15,4 +17,4 @@ response = requests.post(url, data=data, headers=headers)
 from DBManager import DBManager
 
 db = DBManager('/cs/usr/jonahar/PythonProjects/TwitterMine/DB/TwitterMineDB.db')
-db.get_friends(attr='name')
+db.get_friends(attr='id')

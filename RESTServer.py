@@ -33,24 +33,35 @@ class RESTServer:
 
             self.miner = Miner(keys, database_file)
             self.app = Flask(__name__)
+            self.counter = 0
 
         @self.app.route('/')
         def index():
             logging.info('server index was accessed')
-            return "Welcome to TwitterMine REST server!"
+            self.counter += 1
+            return "Welcome to TwitterMine REST server!\nFor your convenience a counter is " \
+                   "increased each time this index page is accessed.\n" \
+                   "Current counter value: {}\n".format(self.counter)
 
-        @self.app.route('/mine/following_ids', methods=['POST'])
-        def mine_following_ids():
-            logging.info('got request to mine following ids')
+        @self.app.route('/mine/friends_ids', methods=['POST'])
+        def mine_friends_ids():
+            logging.info('Got request to mine friends ids')
             user, limit = self.parse_params(request.json)
-            self.miner.mine_following_ids(user, limit)
+            self.miner.mine_friends_ids(user, limit)
             return jsonify({'success': True}), 201
 
         @self.app.route('/mine/followers_ids', methods=['POST'])
         def mine_followers_ids():
-            logging.info('got request to mine followers ids')
+            logging.info('Got request to mine followers ids')
             user, limit = self.parse_params(request.json)
             self.miner.mine_followers_ids(user, limit)
+            return jsonify({'success': True}), 201
+
+        @self.app.route('/mine/user', methods=['POST'])
+        def mine_user():
+            logging.info('Got request to mine user')
+            user, _ = self.parse_params(request.json)
+            self.miner.mine_user(user)
             return jsonify({'success': True}), 201
 
     def parse_params(self, json_params):

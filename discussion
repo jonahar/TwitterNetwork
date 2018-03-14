@@ -2,7 +2,18 @@ What data do we want to store:
 sql DB with Users(id, screen_name, name) and Follows(id1, id2)
 Is this enough? Do we want to store an entire User object?
 
-should find a better solution than sqlite3 (don't work with sql statements in python)
+should we save entire data for each user participating in 'Follows'?
+only ids chunk size: 5000
+full friends data chunk size: 20
+
+Must define explicitly what information we store for each user. Can save a lot of API calls.
+
+
+Is sqlite3 a good solution for a database?
+
+
+
+
 
 
 Supported actions in server:

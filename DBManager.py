@@ -15,7 +15,7 @@ add_follows_query = """INSERT INTO Follows
 
 get_friends_query = 'SELECT * FROM Follows'
 
-get_friends_by_attr_query = """SELECT u1.?, u2.?        
+get_friends_by_attr_query = """SELECT u1.{0}, u2.{0}        
                                FROM users u1, users u2             
                                WHERE exists(SELECT *                    
                                             FROM follows F              
@@ -72,9 +72,9 @@ class DBManager:
         if attr == 'id':
             q = get_friends_query
         else:
-            q = get_friends_by_attr_query
+            q = get_friends_by_attr_query.format(attr)
         conn = sqlite3.connect(self._database, check_same_thread=False)
-        cursor = conn.execute(q, (attr, attr))
+        cursor = conn.execute(q)
         res = cursor.fetchall()
         conn.close()
         return res
