@@ -1,28 +1,31 @@
 What data do we want to store:
-sql DB with Users(id, screen_name, name) and Follows(id1, id2)
-Is this enough? Do we want to store an entire User object?
-
-should we save entire data for each user participating in 'Follows'?
-only ids chunk size: 5000
-full friends data chunk size: 20
+Users(id, screen_name, name)
+Follows(id1, id2)
+Is this enough?
 
 Must define explicitly what information we store for each user. Can save a lot of API calls.
 
+friends/followers ids:           15 calls in 15 min window. chunk size 5000
+friends/followers User objects:  15 calls in 15 min window. chunk size 20
 
-Is sqlite3 a good solution for a database?
 
+Is sqlite3 a good solution for a database (no server)?
+- no server
+- no ORM, must use sql queries inside the code
+- very easy to setup
 
-
+Do we want to be able to connect to a remote DB?
 
 
 
 Supported actions in server:
-- retrieve list of followers (of specific user)
-- retrieve list of following (of specific user)
+- retrieve ids of followers
+- retrieve ids of following
+- retrieve user information (id, screen_name, name)
+what else?
 
 
-
-Should the server also support returning result to user(results might be very large), or should it
+Should the server also support returning results to user (results may be very large), or should it
 only affect the database?
 
 
