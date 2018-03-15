@@ -6,6 +6,4 @@ https://help.twitter.com/en/managing-your-account/change-twitter-handle \n \
                                                                         \
 create table follows(id1 integer not null,                              \
 					   id2 integer not null,                            \
-					   primary key (id1, id2),                          \
-					   foreign key (id1) references users(id),          \
-					   foreign key (id2) references users(id));"        | sqlite3 TwitterMineDB.db
+					   primary key (id1, id2));"                        | sqlite3 TwitterMineDB.db

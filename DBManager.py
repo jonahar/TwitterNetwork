@@ -69,6 +69,8 @@ class DBManager:
                      of the strings 'id', 'screen_name', 'name'
         :return: list of pairs (tuples)
         """
+        if attr not in ['id', 'screen_name', 'name']:
+            raise ValueError('Invalid value for parameter "attr" in DBManager.get_friends')
         if attr == 'id':
             q = get_friends_query
         else:
