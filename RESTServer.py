@@ -74,7 +74,7 @@ class RESTServer:
         if not json_params or 'user' not in json_params:
             abort(400)
         user = json_params['user']
-        limit = json_params['limit'] if 'limit' in json_params else None
+        limit = json_params['limit'] if 'limit' in json_params else 0
         return user, limit
 
     def run(self, debug=True, port=5000):
