@@ -145,8 +145,20 @@ class Miner:
         return self._mine_friends_followers(screen_name, 'friends', 'friends',
                                             'friends/ids', limit, DW.write_friends)
 
-    # todo think about where and when the miner should sleep. If one endpoint is limited could use
-    # other endpoints in the meantime
+    def mine_tweets(self, screen_name, limit=0):
+        """
+        retrieve tweets of the given user
+        :param screen_name: screen name of the user
+        :param limit: maximum number of tweets to retrieve
+        :return:
+        """
+        pass
+
+    # todo   think about where and when the miner should sleep. If one endpoint is limited could use
+    # todo   other endpoints in the meantime
+    #
+    # todo   if limit is reached, maybe could simply call consume_job, and then return to the point
+    # todo   we stopped at
 
     def consume_job(self):  # process another job. should be called by the miner itself
         pass
