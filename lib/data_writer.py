@@ -2,9 +2,6 @@ import os
 import json
 import logging
 
-USER_DETAILS_KEYS = ['id', 'screen_name', 'name', 'friends_count', 'followers_count',
-                     'statuses_count', 'created_at', 'favourites_count']
-TWEET_KEYS = ['id', 'in_reply_to_status_id', 'in_reply_to_user_id', 'created_at']
 NEWLINE = '\n'
 
 
@@ -45,9 +42,8 @@ class DataWriter:
         user_dir = self._init_user_dir(details['screen_name'])
         user_info_file = os.path.join(user_dir, 'user_details')
         # even if this file exist we override it with the new data
-        data = {key: details[key] for key in USER_DETAILS_KEYS}
-        data = json.dumps(data)
-        self.logger.info('writing user details')
+        data = json.dumps(details)
+        self.logger.info('writing user details for {0}'.format(details['screen_name']))
         with open(user_info_file, mode='w+') as f:
             f.write(data)
 
@@ -71,7 +67,7 @@ class DataWriter:
         """
         user_dir = self._init_user_dir(screen_name)
         user_friends_file = os.path.join(user_dir, 'friends')
-        self.logger.info('writing user\'s friends')
+        self.logger.info('writing friends of {0}'.format(screen_name))
         self._write_friends_followers(user_friends_file, friends_ids, append)
 
     def write_followers(self, followers_ids, screen_name, append=True):
@@ -84,7 +80,7 @@ class DataWriter:
         """
         user_dir = self._init_user_dir(screen_name)
         user_friends_file = os.path.join(user_dir, 'followers')
-        self.logger.info('writing user\'s followers')
+        self.logger.info('writing followers of {0}'.format(screen_name))
         self._write_friends_followers(user_friends_file, followers_ids, append)
 
     def _parse_tweet_data(self, tweet):
@@ -93,18 +89,19 @@ class DataWriter:
         :param tweet: tweet dictionary
         :return the dictionary representing the tweet
         """
-        # todo maybe should reformat the date attribute to something more convenient to work with
-        data = {key: tweet[key] for key in TWEET_KEYS}
-        if 'extended_tweet' in tweet:  # complies to the streaming API
-            text = tweet['extended_tweet']['full_text']
-        elif 'full_text' in tweet:
-            text = tweet['full_text']
-        else:
-            text = tweet['text']
-        text = text.replace(NEWLINE, ' ')
-        data['text'] = text
-        data['author_id'] = tweet['user']['screen_name']
-        return data
+        pass
+        # # todo maybe should reformat the date attribute to something more convenient to work with
+        # data = {key: tweet[key] for key in TWEET_KEYS}
+        # if 'extended_tweet' in tweet:  # complies to the streaming API
+        #     text = tweet['extended_tweet']['full_text']
+        # elif 'full_text' in tweet:
+        #     text = tweet['full_text']
+        # else:
+        #     text = tweet['text']
+        # text = text.replace(NEWLINE, ' ')
+        # data['text'] = text
+        # data['author_id'] = tweet['user']['screen_name']
+        # return data
 
     def write_tweets(self, tweets):
         """
@@ -112,18 +109,20 @@ class DataWriter:
         :param tweets: list of dictionaries. each dictionary correspond to a single tweet
         :return:
         """
-        self.logger.info('writing tweets')
-        opened_files = dict()
-        for tweet in tweets:
-            data = self._parse_tweet_data(tweet)
-            # if tweets file of this user is already opened, use it
-            author_id = data['author_id']
-            data = json.dumps(data)
-            author_dir = self._init_user_dir(str(author_id))
-            if author_id not in opened_files:
-                tweets_file_path = os.path.join(author_dir, 'tweets')
-                opened_files[author_id] = open(tweets_file_path, mode='a')
-            opened_files[author_id].write(data)
-            opened_files[author_id].write(NEWLINE)
-        for id in opened_files:
-            opened_files[id].close()
+        pass
+        # # todo write entire tweet json
+        # self.logger.info('writing tweets')
+        # opened_files = dict()
+        # for tweet in tweets:
+        #     data = self._parse_tweet_data(tweet)
+        #     # if tweets file of this user is already opened, use it
+        #     author_id = data['author_id']
+        #     data = json.dumps(data)
+        #     author_dir = self._init_user_dir(str(author_id))
+        #     if author_id not in opened_files:
+        #         tweets_file_path = os.path.join(author_dir, 'tweets')
+        #         opened_files[author_id] = open(tweets_file_path, mode='a')
+        #     opened_files[author_id].write(data)
+        #     opened_files[author_id].write(NEWLINE)
+        # for id in opened_files:
+        #     opened_files[id].close()

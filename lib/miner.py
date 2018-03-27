@@ -37,6 +37,8 @@ class Miner:
         if 'errors' in r:
             error = r['errors'][0]
             if error['code'] == RATE_LIMIT_CODE:
+                self.logger.info(
+                    'rate limit exceeded for checking rate limits :) going to sleep for 1 minute')
                 time.sleep(60)
                 return self._get_limit_info(resource)  # try again
             else:
@@ -49,19 +51,26 @@ class Miner:
         :param screen_name the screen_name of the user to retrieve
         :return:
         """
+        self.logger.info('mining user details of {0}'.format(screen_name))
         r = self.api.request('users/show', params={'screen_name': screen_name})
         details = r.json()
         self.writer.write_user(details)
         # todo should return anything?
 
-    def _mine_friends_followers(self, screen_name, log_title, resource, endpoint, limit,
+    def _mine_friends_followers(self, screen_name, title, resource, endpoint, limit,
                                 writer_func):
         """
         retrieve ids of friends or followers
         :param screen_name:
+        :param title: 'friends' or 'followers'
+        :param resource: the resource (e.g. 'friends')
+        :param endpoint: the endpoint (e.h. 'followers/ids')
+        :param limit: maximum number of followers to retrieve
+        :param writer_func: the writer's function to use
         :return:
         """
-        self.logger.info('mining {0} ids'.format(log_title))
+
+        self.logger.info('mining {0} ids for user {1}'.format(title, screen_name))
         if limit == 0:
             limit = float('inf')
         ids = []
@@ -82,7 +91,9 @@ class Miner:
                     time_to_wait = reset_time - time.time()
                     time_to_wait *= 1.1  # just to be on the safe side, sleep 10% more than needed
                     time_to_wait = int(time_to_wait)
-                    self.logger.info('Miner goes to sleep for {0} seconds'.format(time_to_wait))
+                    self.logger.info(
+                        'rate limit exceeded. miner goes to sleep for {0} seconds'.format(
+                            time_to_wait))
                     time.sleep(time_to_wait)
                 else:
                     # another, unrecognized error
@@ -124,4 +135,4 @@ class Miner:
         :return:
         """
         return self._mine_friends_followers(screen_name, 'friends', 'friends',
-                                            'friends/ids', limit, DW.write_followers)
+                                            'friends/ids', limit, DW.write_friends)

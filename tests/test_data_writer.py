@@ -1,4 +1,4 @@
-from tests.bootstrap import boot
+import tests.bootstrap as boot
 import logging
 
 
@@ -41,9 +41,10 @@ def tweets_different_authors(screen_names, writer):
     writer.write_tweets(tweets)
 
 
-api, writer = boot()
+api = boot.get_api()
+writer = boot.get_api()
 
-screen_names = ['realJonaHarris', 'realDonaldTrump', 'Google', 'DisneyPixar']
+screen_names = ['realDonaldTrump', 'Google', 'DisneyPixar']
 for name in screen_names:
     r = api.request('users/show', params={'screen_name': name})
     user_details = r.json()
