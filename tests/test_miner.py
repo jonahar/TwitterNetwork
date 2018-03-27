@@ -8,5 +8,5 @@ screen_names = ['realDonaldTrump', 'Google', 'DisneyPixar']
 FOLLOWERS_LIMIT = 30000
 for scr_name in screen_names:
     miner.mine_user(scr_name)
-    miner.mine_followers_ids(scr_name)
+    miner.mine_followers_ids(scr_name, FOLLOWERS_LIMIT)
     miner.mine_friends_ids(scr_name)

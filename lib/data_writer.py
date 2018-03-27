@@ -42,7 +42,7 @@ class DataWriter:
         user_dir = self._init_user_dir(details['screen_name'])
         user_info_file = os.path.join(user_dir, 'user_details')
         # even if this file exist we override it with the new data
-        data = json.dumps(details)
+        data = json.dumps(details, indent=4, sort_keys=True)
         self.logger.info('writing user details for {0}'.format(details['screen_name']))
         with open(user_info_file, mode='w+') as f:
             f.write(data)

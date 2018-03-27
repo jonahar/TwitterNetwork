@@ -27,7 +27,7 @@ class Miner:
         self.writer = DW(data_dir)
         self.logger = logging.getLogger()
 
-    def _get_limit_info(self, resource):
+    def get_limit_info(self, resource):
         """
         :param resource: the resource to which you need to get rate limit information
         :return: a dictionary with the rate limit status
@@ -40,7 +40,7 @@ class Miner:
                 self.logger.info(
                     'rate limit exceeded for checking rate limits :) going to sleep for 1 minute')
                 time.sleep(60)
-                return self._get_limit_info(resource)  # try again
+                return self.get_limit_info(resource)  # try again
             else:
                 raise Exception(error['message'])
         return r
@@ -57,6 +57,29 @@ class Miner:
         self.writer.write_user(details)
         # todo should return anything?
 
+    def handle_error(self, error, resource, endpoint):
+        """
+        handle an error response
+        :param error: the error dictionary returned in the request
+        :param resource:
+        :param endpoint:
+        :return:
+        """
+        if error['code'] == RATE_LIMIT_CODE:
+            # rate limit exceeded
+            # find out how much we need to wait for the limit reset
+            rate_limit_info = self.get_limit_info(resource)
+            reset_time = rate_limit_info['resources'][resource]['/' + endpoint]['reset']
+            time_to_wait = int(reset_time - time.time()) + 10  # wait an extra 10 seconds
+            # just to be on the safe side
+            self.logger.info(
+                'rate limit exceeded. miner goes to sleep for {0} seconds'.format(time_to_wait))
+            time.sleep(time_to_wait)
+        else:
+            # another, unrecognized error
+            raise Exception(error['message'])
+            # todo handle this error somehow instead of raising exception
+
     def _mine_friends_followers(self, screen_name, title, resource, endpoint, limit,
                                 writer_func):
         """
@@ -69,7 +92,6 @@ class Miner:
         :param writer_func: the writer's function to use
         :return:
         """
-
         self.logger.info('mining {0} ids for user {1}'.format(title, screen_name))
         if limit == 0:
             limit = float('inf')
@@ -84,21 +106,7 @@ class Miner:
             r = r.json()
             if 'errors' in r:
                 error = r['errors'][0]
-                if error['code'] == RATE_LIMIT_CODE:
-                    # rate limit exceeded
-                    rate_limit_info = self._get_limit_info(resource)
-                    reset_time = rate_limit_info['resources'][resource][endpoint]['reset']
-                    time_to_wait = reset_time - time.time()
-                    time_to_wait *= 1.1  # just to be on the safe side, sleep 10% more than needed
-                    time_to_wait = int(time_to_wait)
-                    self.logger.info(
-                        'rate limit exceeded. miner goes to sleep for {0} seconds'.format(
-                            time_to_wait))
-                    time.sleep(time_to_wait)
-                else:
-                    # another, unrecognized error
-                    raise Exception(error['message'])
-                    # todo handle this error somehow instead of raising exception
+                self.handle_error(error, resource, endpoint)
             else:
                 new_ids = r['ids']
                 total_ids_to_add = min(len(new_ids), limit - total)  # how many ids we can
@@ -136,3 +144,18 @@ class Miner:
         """
         return self._mine_friends_followers(screen_name, 'friends', 'friends',
                                             'friends/ids', limit, DW.write_friends)
+
+    # todo think about where and when the miner should sleep. If one endpoint is limited could use
+    # other endpoints in the meantime
+
+    def consume_job(self):  # process another job. should be called by the miner itself
+        pass
+
+    def produce_job(self, job):  # should be called from outside to give the miner a new job
+        pass
+
+    def run(self):
+        """
+        Start the miner. this function does not return and should usually be invoked as a new thread
+        """
+        pass
