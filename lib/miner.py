@@ -103,6 +103,14 @@ class Miner:
         self.writer.write_user(details)
         # todo should return anything?
 
+    def _produce_user_details_job(self, screen_name):
+        """
+        produce a new user_details job, if the details don't already exist.
+        this function is called by other mining functions.
+        """
+        if not self.writer.user_details_exist(screen_name):
+            self.produce_job('user_details', {'screen_name': screen_name})
+
     def _mine_friends_followers(self, args, resource, endpoint, writer_func):
         """
         retrieve ids of friends or followers
@@ -117,6 +125,7 @@ class Miner:
         # Consider forking TwitterAPI
         screen_name = args['screen_name']
         limit = args['limit']
+        self._produce_user_details_job(screen_name)
         if limit == 0:
             limit = float('inf')
         ids = []
@@ -178,6 +187,7 @@ class Miner:
         """
         screen_name = args['screen_name']
         limit = args['limit']
+        self._produce_user_details_job(screen_name)
         if limit == 0:
             limit = float('inf')
         tweets = []

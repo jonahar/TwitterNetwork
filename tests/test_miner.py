@@ -13,7 +13,7 @@ TWEETS_LIMIT = 80000
 jobs = []
 # creating a list of jobs
 for scr_name in screen_names:
-    jobs.append(('user_details', {'screen_name': scr_name}))
+    # jobs.append(('user_details', {'screen_name': scr_name}))  # we dont need to add these jobs, as they are added
     jobs.append(('friends_ids', {'screen_name': scr_name, 'limit': 0}))
     jobs.append(('followers_ids', {'screen_name': scr_name, 'limit': FOLLOWERS_LIMIT}))
     jobs.append(('tweets', {'screen_name': scr_name, 'limit': TWEETS_LIMIT}))

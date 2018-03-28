@@ -38,6 +38,12 @@ class DataWriter:
         self.init_dir_lock.release()
         return user_dir
 
+    def user_details_exist(self, screen_name):
+        """
+        :return: True if the database contains the details of the given user
+        """
+        return os.path.isfile(os.path.join(self._get_user_dir(screen_name), 'user_details'))
+
     def write_user(self, details):
         """
         write user details from the given dictionary. If such user already has details file in the
