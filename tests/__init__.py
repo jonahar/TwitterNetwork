@@ -1,8 +1,17 @@
 import logging
 import sys
+import os
+import json
+
+conf_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../server.conf')  # so we
+# can run this from any directory
+with open(conf_file) as f:
+    values = json.load(f)
+
+CONFIG = values
 
 # initialize logger
-logging.basicConfig(filename='test.log', level=logging.DEBUG,
+logging.basicConfig(filename=CONFIG['log_file'], level=logging.DEBUG,
                     format='%(asctime)s: %(levelname)s: %(filename)s: %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     filemode='a')

@@ -1,4 +1,4 @@
-import tests.bootstrap as boot
+import tests.toolbox as toolbox
 import logging
 
 
@@ -41,8 +41,8 @@ def tweets_different_authors(screen_names, writer):
     writer.write_tweets_of_user(tweets)
 
 
-api = boot.get_api()
-writer = boot.get_api()
+api = toolbox.get_api()
+writer = toolbox.get_api()
 
 screen_names = ['realDonaldTrump', 'Google', 'DisneyPixar']
 for name in screen_names:

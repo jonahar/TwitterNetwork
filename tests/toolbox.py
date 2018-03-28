@@ -1,19 +1,14 @@
-import json
-import os
 from TwitterAPI import TwitterAPI
 from lib.data_writer import DataWriter as DW
+from tests import CONFIG
+from lib.miner import Miner
 
 
 def get_config():
     """
     :return: the dictionary with the different configurations
     """
-    conf_file = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), '../server.conf')  # so we can run this
-    # from any directory
-    with open(conf_file) as f:
-        values = json.load(f)
-    return values
+    return CONFIG
 
 
 def get_api():
@@ -27,3 +22,7 @@ def get_writer():
     data_dir = config['data_dir']
     writer = DW(data_dir)
     return writer
+
+
+def get_miner():
+    return Miner(CONFIG['consumer_key'], CONFIG['consumer_secret'], CONFIG['data_dir'])
