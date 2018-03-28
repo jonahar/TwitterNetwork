@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+from threading import Lock
 
 NEWLINE = '\n'
 
@@ -14,6 +15,7 @@ class DataWriter:
         if not os.path.isdir(data_dir):
             os.makedirs(data_dir)
         self.logger = logging.getLogger()
+        self.init_dir_lock = Lock()
 
     def _get_user_dir(self, scr_name):
         return os.path.join(self.data_dir, scr_name)
@@ -29,8 +31,11 @@ class DataWriter:
         :return: the user's directory full path
         """
         user_dir = self._get_user_dir(scr_name)
+        self.init_dir_lock.acquire()  # two threads may try to write different data to the same
+        # user at the same time
         if not os.path.isdir(user_dir):
             os.mkdir(user_dir)
+        self.init_dir_lock.release()
         return user_dir
 
     def write_user(self, details):
@@ -43,7 +48,7 @@ class DataWriter:
         user_info_file = os.path.join(user_dir, 'user_details')
         # even if this file exist we override it with the new data
         data = json.dumps(details, indent=4, sort_keys=True)
-        self.logger.info('writing user details for {0}'.format(details['screen_name']))
+        # self.logger.info('writing user details for {0}'.format(details['screen_name']))
         with open(user_info_file, mode='w+') as f:
             f.write(data)
 
@@ -67,7 +72,7 @@ class DataWriter:
         """
         user_dir = self._init_user_dir(screen_name)
         user_friends_file = os.path.join(user_dir, 'friends')
-        self.logger.info('writing friends of {0}'.format(screen_name))
+        # self.logger.info('writing friends of {0}'.format(screen_name))
         self._write_friends_followers(user_friends_file, friends_ids, append)
 
     def write_followers(self, followers_ids, screen_name, append=True):
@@ -80,49 +85,40 @@ class DataWriter:
         """
         user_dir = self._init_user_dir(screen_name)
         user_friends_file = os.path.join(user_dir, 'followers')
-        self.logger.info('writing followers of {0}'.format(screen_name))
+        # self.logger.info('writing followers of {0}'.format(screen_name))
         self._write_friends_followers(user_friends_file, followers_ids, append)
 
-    def _parse_tweet_data(self, tweet):
+    def write_tweets_of_user(self, tweets, screen_name):
         """
-        create the dictionary that will be written for this tweet
-        :param tweet: tweet dictionary
-        :return the dictionary representing the tweet
-        """
-        pass
-        # # todo maybe should reformat the date attribute to something more convenient to work with
-        # data = {key: tweet[key] for key in TWEET_KEYS}
-        # if 'extended_tweet' in tweet:  # complies to the streaming API
-        #     text = tweet['extended_tweet']['full_text']
-        # elif 'full_text' in tweet:
-        #     text = tweet['full_text']
-        # else:
-        #     text = tweet['text']
-        # text = text.replace(NEWLINE, ' ')
-        # data['text'] = text
-        # data['author_id'] = tweet['user']['screen_name']
-        # return data
-
-    def write_tweets(self, tweets):
-        """
-        write list of tweets
-        :param tweets: list of dictionaries. each dictionary correspond to a single tweet
+        write list of tweets. each tweet is written in json format in a new line (no newline
+        character in a tweet)
+        :param tweets: list of dictionaries. each dictionary correspond to a single tweet by the user
+        :param screen_name: the screen name of the user
         :return:
         """
-        pass
-        # # todo write entire tweet json
         # self.logger.info('writing tweets')
-        # opened_files = dict()
-        # for tweet in tweets:
-        #     data = self._parse_tweet_data(tweet)
-        #     # if tweets file of this user is already opened, use it
-        #     author_id = data['author_id']
-        #     data = json.dumps(data)
-        #     author_dir = self._init_user_dir(str(author_id))
-        #     if author_id not in opened_files:
-        #         tweets_file_path = os.path.join(author_dir, 'tweets')
-        #         opened_files[author_id] = open(tweets_file_path, mode='a')
-        #     opened_files[author_id].write(data)
-        #     opened_files[author_id].write(NEWLINE)
-        # for id in opened_files:
-        #     opened_files[id].close()
+        user_dir = self._init_user_dir(screen_name)
+        tweets_file_path = os.path.join(user_dir, 'tweets')
+        with open(tweets_file_path, 'a+') as f:
+            for t in tweets:
+                data = json.dumps(t).replace(NEWLINE, ' ')
+                f.write(data)
+                f.write(NEWLINE)
+
+    def write_likes(self, tweets, screen_name):
+        """
+        write list of tweets that the user likes. each tweet is written in json format in a new
+        line (no newline character in a tweet)
+        :param tweets: list of dictionaries. each dictionary correspond to a single tweet that
+                       the user likes
+        :param screen_name: the screen name of the user
+        :return:
+        """
+        # self.logger.info('writing likes')
+        user_dir = self._init_user_dir(screen_name)
+        tweets_file_path = os.path.join(user_dir, 'likes')
+        with open(tweets_file_path, 'a+') as f:
+            for t in tweets:
+                data = json.dumps(t).replace(NEWLINE, ' ')
+                f.write(data)
+                f.write(NEWLINE)

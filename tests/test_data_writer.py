@@ -14,7 +14,7 @@ def write_data_multiple_users(screen_names, writer):
                                                           'count': 200,
                                                           'tweet_mode': 'extended'})
         tweets = r.json()  # list of dictionaries
-        writer.write_tweets(tweets)
+        writer.write_tweets_of_user(tweets)
 
         r = api.request('followers/ids', params={'screen_name': name})
         followers = r.json()['ids']
@@ -38,7 +38,7 @@ def tweets_different_authors(screen_names, writer):
                                 'count': 2,
                                 'tweet_mode': 'extended'})
         tweets += r.json()
-    writer.write_tweets(tweets)
+    writer.write_tweets_of_user(tweets)
 
 
 api = boot.get_api()

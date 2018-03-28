@@ -2,12 +2,13 @@ import time
 import logging
 from queue import Queue
 from threading import Semaphore, Thread
-from TwitterAPI import TwitterAPI
+from TwitterAPI import TwitterAPI, TwitterPager
 from lib.data_writer import DataWriter as DW
 
 API_FIRST_PAGE = -1
 RATE_LIMIT_CODE = 88
 MAX_IDS_LIST = 100000  # this is only a soft max.
+MAX_TWEETS_LIST = 500
 
 JOBS_TYPES = ['friends_ids', 'followers_ids', 'tweets', 'likes', 'user_details']  # todo add listen
 
@@ -65,8 +66,8 @@ class Miner:
         """
         handle an error response
         :param error: the error dictionary returned in the request
-        :param resource:
-        :param endpoint:
+        :param resource: e.g. 'friends'
+        :param endpoint: e.g. 'friends/ids'
         :return:
         """
         if error['code'] == RATE_LIMIT_CODE:
@@ -104,13 +105,14 @@ class Miner:
         :param args: dictionary with the screen_name and limit
         :param title: 'friends' or 'followers'
         :param resource: the resource (e.g. 'friends')
-        :param endpoint: the endpoint (e.h. 'followers/ids')
+        :param endpoint: the endpoint (e.g. 'followers/ids')
         :param writer_func: the writer's function to use
         :return:
         """
+        # Unfortunately TwitterPager does not work with the ids methods.
+        # Consider forking TwitterAPI
         screen_name = args['screen_name']
         limit = args['limit']
-
         if limit == 0:
             limit = float('inf')
         ids = []
@@ -161,15 +163,48 @@ class Miner:
         self.logger.info('mining friends ids for user {0}'.format(args['screen_name']))
         return self._mine_friends_followers(args, 'friends', 'friends/ids', DW.write_friends)
 
+    def _mine_tweets_likes(self, args, resource, endpoint, writer_func):
+        """
+        retrieve tweets or likes of a user
+        :param args: dictionary with keys 'screen_name' and 'limit'
+        :param resource: e.g. 'statuses'
+        :param endpoint: e.g. 'statuses/user_timeline'
+        :param writer_func: the writer's function to use
+        :return:
+        """
+        screen_name = args['screen_name']
+        limit = args['limit']
+        if limit == 0:
+            limit = float('inf')
+        tweets = []
+        total = 0
+        r = TwitterPager(self.api, endpoint, params={'screen_name': screen_name,
+                                                     'count': 200,
+                                                     'tweet_mode': 'extended'})
+
+        for t in r.get_iterator():
+            if 'message' in t and 'code' in t:
+                # t is an error response
+                self.handle_error(t, resource, endpoint)
+                continue
+            tweets.append(t)
+            total += 1
+            if len(tweets) > MAX_TWEETS_LIST:
+                writer_func(self.writer, tweets, screen_name)
+                tweets = []
+            if total > limit:
+                break
+        writer_func(self.writer, tweets, screen_name)
+
     def mine_tweets(self, args):
         """
         retrieve tweets of the given user
         :param args: dictionary with keys 'screen_name' and 'limit'
         :return:
         """
-        screen_name = args['screen_name']
-        limit = args['limit']
-        self.logger.info('mining tweets of user {0}'.format(screen_name))
+        self.logger.info('mining tweets of user {0}'.format(args['screen_name']))
+        return self._mine_tweets_likes(args, 'statuses', 'statuses/user_timeline',
+                                       DW.write_tweets_of_user)
 
     def mine_likes(self, args):
         """
@@ -177,9 +212,9 @@ class Miner:
         :param args: dictionary with keys 'screen_name' and 'limit'
         :return:
         """
-        screen_name = args['screen_name']
-        limit = args['limit']
-        self.logger.info('mining likes of user {0}'.format(screen_name))
+        self.logger.info('mining likes of user {0}'.format(args['screen_name']))
+        return self._mine_tweets_likes(args, 'favorites', 'favorites/list',
+                                       DW.write_likes)
 
     def produce_job(self, job_type, args):
         """
@@ -209,6 +244,7 @@ class Miner:
         Start the miner.
         """
         # todo ugly. do it in a loop
+        # create thread for each different job type
         Thread(target=Miner.consume_specific_job,
                args=(self, 'followers_ids', Miner.mine_followers_ids)).start()
 
