@@ -7,7 +7,7 @@ from lib.data_writer import DataWriter as DW
 
 API_FIRST_PAGE = -1
 RATE_LIMIT_CODE = 88
-MAX_IDS_LIST = 100000  # this is only a soft max.
+MAX_IDS_LIST = 100000
 MAX_TWEETS_LIST = 500
 
 JOBS_TYPES = ['friends_ids', 'followers_ids', 'tweets', 'likes', 'user_details']  # todo add listen
@@ -18,14 +18,18 @@ class Miner:
     A Miner object can talk to twitter (via twitter's API), retrieve data and store it in a
     local database. The Miner actions are reflected in the database.
 
-    The miner should be invoked after creation by the method run(). The miner will then consist of
+    The miner should be invoked by the method run(). The miner will then consist of
     multiple threads, each will handle a specific kind of job (each job has a different limit for
     using Twitter's API, so each thread will handle its job's limit). For each job type there is
     a special queue to which new jobs are inserted. A new job will appear in the queue in the form
-    of a dictionary that consist all needed arguments for this job.
+    of a dictionary that consist of all needed arguments for this job.
+
     For more information about what arguments are needed for a specific job, look at the doc of its
-    corresponding mine function (e.g. for adding new job of downloading followers ids look
-    at mine_followers_ids() )
+    corresponding mine function, e.g. for adding new job of downloading followers ids look
+    at mine_followers_ids()
+
+    Each mining function related to some user will automatically mine the details of this user, so
+    there is no need to call mine_user_details for users for which we perform other mining jobs.
     """
 
     def __init__(self, consumer_key, consumer_secret, data_dir):
@@ -181,7 +185,6 @@ class Miner:
         r = TwitterPager(self.api, endpoint, params={'screen_name': screen_name,
                                                      'count': 200,
                                                      'tweet_mode': 'extended'})
-
         for t in r.get_iterator():
             if 'message' in t and 'code' in t:
                 # t is an error response
@@ -223,6 +226,8 @@ class Miner:
         :param args: dictionary with the needed arguments for this job
         :return:
         """
+        if job_type not in JOBS_TYPES:
+            raise ValueError('Unsupported job type: "{0}"'.format(job_type))
         self.queues[job_type].put(args)
         self.semaphores[job_type].release()
 
@@ -242,8 +247,8 @@ class Miner:
     def run(self):
         """
         Start the miner.
+        must be called before producing new jobs
         """
-        # todo ugly. do it in a loop
         # create thread for each different job type
         Thread(target=Miner.consume_specific_job,
                args=(self, 'followers_ids', Miner.mine_followers_ids)).start()
