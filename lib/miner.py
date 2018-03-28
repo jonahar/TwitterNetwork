@@ -1,5 +1,7 @@
 import time
 import logging
+from queue import Queue
+from threading import Semaphore, Thread
 from TwitterAPI import TwitterAPI
 from lib.data_writer import DataWriter as DW
 
@@ -7,14 +9,23 @@ API_FIRST_PAGE = -1
 RATE_LIMIT_CODE = 88
 MAX_IDS_LIST = 100000  # this is only a soft max.
 
+JOBS_TYPES = ['friends_ids', 'followers_ids', 'tweets', 'likes', 'user_details']  # todo add listen
+
 
 class Miner:
     """
     A Miner object can talk to twitter (via twitter's API), retrieve data and store it in a
-    local database. The Miner actions are reflected in the database
-    """
+    local database. The Miner actions are reflected in the database.
 
-    'Construct a new Miner for retrieving data from Twitter'
+    The miner should be invoked after creation by the method run(). The miner will then consist of
+    multiple threads, each will handle a specific kind of job (each job has a different limit for
+    using Twitter's API, so each thread will handle its job's limit). For each job type there is
+    a special queue to which new jobs are inserted. A new job will appear in the queue in the form
+    of a dictionary that consist all needed arguments for this job.
+    For more information about what arguments are needed for a specific job, look at the doc of its
+    corresponding mine function (e.g. for adding new job of downloading followers ids look
+    at mine_followers_ids() )
+    """
 
     def __init__(self, consumer_key, consumer_secret, data_dir):
         """
@@ -26,6 +37,11 @@ class Miner:
         self.api = TwitterAPI(consumer_key, consumer_secret, auth_type='oAuth2')
         self.writer = DW(data_dir)
         self.logger = logging.getLogger()
+        self.queues = {type: Queue() for type in JOBS_TYPES}
+        # python queues are thread safe and don't require locks for multi-producers/consumers
+        self.semaphores = {type: Semaphore(value=0) for type in JOBS_TYPES}
+        # semaphore value starts from 0 because there are no jobs. at the first acquire by
+        # the miner, the miner will be put to sleep
 
     def get_limit_info(self, resource):
         """
@@ -45,18 +61,6 @@ class Miner:
                 raise Exception(error['message'])
         return r
 
-    def mine_user(self, screen_name):
-        """
-        retrieve details of a specific user according to its screen name.
-        :param screen_name the screen_name of the user to retrieve
-        :return:
-        """
-        self.logger.info('mining user details of {0}'.format(screen_name))
-        r = self.api.request('users/show', params={'screen_name': screen_name})
-        details = r.json()
-        self.writer.write_user(details)
-        # todo should return anything?
-
     def handle_error(self, error, resource, endpoint):
         """
         handle an error response
@@ -73,26 +77,40 @@ class Miner:
             time_to_wait = int(reset_time - time.time()) + 10  # wait an extra 10 seconds
             # just to be on the safe side
             self.logger.info(
-                'rate limit exceeded. miner goes to sleep for {0} seconds'.format(time_to_wait))
+                'rate limit exceeded for {0}. miner goes to sleep for {1} seconds'.format(endpoint,
+                                                                                          time_to_wait))
             time.sleep(time_to_wait)
         else:
             # another, unrecognized error
             raise Exception(error['message'])
             # todo handle this error somehow instead of raising exception
 
-    def _mine_friends_followers(self, screen_name, title, resource, endpoint, limit,
-                                writer_func):
+    def mine_user_details(self, args):
+        """
+        retrieve details of a specific user according to its screen name.
+        :param args: dictionary with a key 'screen_name' which indicates the user to retrieve
+        :return:
+        """
+        screen_name = args['screen_name']
+        self.logger.info('mining user details of {0}'.format(screen_name))
+        r = self.api.request('users/show', params={'screen_name': screen_name})
+        details = r.json()
+        self.writer.write_user(details)
+        # todo should return anything?
+
+    def _mine_friends_followers(self, args, resource, endpoint, writer_func):
         """
         retrieve ids of friends or followers
-        :param screen_name:
+        :param args: dictionary with the screen_name and limit
         :param title: 'friends' or 'followers'
         :param resource: the resource (e.g. 'friends')
         :param endpoint: the endpoint (e.h. 'followers/ids')
-        :param limit: maximum number of followers to retrieve
         :param writer_func: the writer's function to use
         :return:
         """
-        self.logger.info('mining {0} ids for user {1}'.format(title, screen_name))
+        screen_name = args['screen_name']
+        limit = args['limit']
+
         if limit == 0:
             limit = float('inf')
         ids = []
@@ -125,49 +143,83 @@ class Miner:
         writer_func(self.writer, ids, screen_name)
         # todo should return anything?
 
-    def mine_followers_ids(self, screen_name=None, limit=0):
+    def mine_followers_ids(self, args):
         """
         retrieve ids of the user's followers
-        :param screen_name: the screen_name of the user
-        :param limit: maximum number of followers to retrieve. default is 0 which means no limit
+        :param args: dictionary with keys 'screen_name' and 'limit'. limit 0 means no limit
         :return:
         """
-        return self._mine_friends_followers(screen_name, 'followers', 'followers',
-                                            'followers/ids', limit, DW.write_followers)
+        self.logger.info('mining followers ids for user {0}'.format(args['screen_name']))
+        return self._mine_friends_followers(args, 'followers', 'followers/ids', DW.write_followers)
 
-    def mine_friends_ids(self, screen_name, limit=0):
+    def mine_friends_ids(self, args):
         """
         retrieve ids of the user's friends
-        :param screen_name: the screen_name of the user
-        :param limit: maximum number of friends to retrieve. default is 0 which means no limit
+        :param args: dictionary with keys 'screen_name' and 'limit'. limit 0 means no limit
         :return:
         """
-        return self._mine_friends_followers(screen_name, 'friends', 'friends',
-                                            'friends/ids', limit, DW.write_friends)
+        self.logger.info('mining friends ids for user {0}'.format(args['screen_name']))
+        return self._mine_friends_followers(args, 'friends', 'friends/ids', DW.write_friends)
 
-    def mine_tweets(self, screen_name, limit=0):
+    def mine_tweets(self, args):
         """
         retrieve tweets of the given user
-        :param screen_name: screen name of the user
-        :param limit: maximum number of tweets to retrieve
+        :param args: dictionary with keys 'screen_name' and 'limit'
         :return:
         """
-        pass
+        screen_name = args['screen_name']
+        limit = args['limit']
+        self.logger.info('mining tweets of user {0}'.format(screen_name))
 
-    # todo   think about where and when the miner should sleep. If one endpoint is limited could use
-    # todo   other endpoints in the meantime
-    #
-    # todo   if limit is reached, maybe could simply call consume_job, and then return to the point
-    # todo   we stopped at
+    def mine_likes(self, args):
+        """
+        retrieve tweets that the user likes
+        :param args: dictionary with keys 'screen_name' and 'limit'
+        :return:
+        """
+        screen_name = args['screen_name']
+        limit = args['limit']
+        self.logger.info('mining likes of user {0}'.format(screen_name))
 
-    def consume_job(self):  # process another job. should be called by the miner itself
-        pass
+    def produce_job(self, job_type, args):
+        """
+        Create a new job to be handles by the miner.
+        :param job_type: the job to perform. one of the constants in miner.JOBS_TYPES
+        :param args: dictionary with the needed arguments for this job
+        :return:
+        """
+        self.queues[job_type].put(args)
+        self.semaphores[job_type].release()
 
-    def produce_job(self, job):  # should be called from outside to give the miner a new job
-        pass
+    def consume_specific_job(self, job_type, job_func):
+        """
+        handle all jobs of a specific type. this function does not return and constantly handling or
+        waiting for new jobs
+        :param job_type: the type of job (one of the constants in miner.JOBS_TYPES)
+        :param job_func: the miner function that should be called for handling this job
+        :return:
+        """
+        while True:
+            self.semaphores[job_type].acquire()
+            job_args = self.queues[job_type].get()
+            job_func(self, job_args)
 
     def run(self):
         """
-        Start the miner. this function does not return and should usually be invoked as a new thread
+        Start the miner.
         """
-        pass
+        # todo ugly. do it in a loop
+        Thread(target=Miner.consume_specific_job,
+               args=(self, 'followers_ids', Miner.mine_followers_ids)).start()
+
+        Thread(target=Miner.consume_specific_job,
+               args=(self, 'friends_ids', Miner.mine_friends_ids)).start()
+
+        Thread(target=Miner.consume_specific_job,
+               args=(self, 'tweets', Miner.mine_tweets)).start()
+
+        Thread(target=Miner.consume_specific_job,
+               args=(self, 'likes', Miner.mine_likes)).start()
+
+        Thread(target=Miner.consume_specific_job,
+               args=(self, 'user_details', Miner.mine_user_details)).start()
