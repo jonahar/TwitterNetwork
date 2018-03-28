@@ -13,7 +13,7 @@ TWEETS_LIMIT = 80000
 jobs = []
 # creating a list of jobs
 for scr_name in screen_names:
-    # jobs.append(('user_details', {'screen_name': scr_name}))  # we dont need to add these jobs, as they are added
+    # jobs.append(('user_details', {'screen_name': scr_name}))  # we dont need to add these jobs, as they are added automatically by the other jobs
     jobs.append(('friends_ids', {'screen_name': scr_name, 'limit': 0}))
     jobs.append(('followers_ids', {'screen_name': scr_name, 'limit': FOLLOWERS_LIMIT}))
     jobs.append(('tweets', {'screen_name': scr_name, 'limit': TWEETS_LIMIT}))
@@ -23,10 +23,11 @@ for scr_name in screen_names:
 shuffle(jobs)
 for job_type, args in jobs:
     if random() < 0.5:
-        time.sleep(3)
-    logging.getLogger().info('Putting new {0} job'.format(job_type))
+        time.sleep(1)
+    logging.getLogger().info('Producing {0} job'.format(job_type))
     miner.produce_job(job_type, args)
 
-logging.getLogger().info('Main produced all jobs. waiting indefinitely')
-while True:
-    pass
+logging.getLogger().info('Main produced all jobs. waiting until miner finishes them all')
+miner.finish()
+logging.getLogger().info('All jobs finished. Terminating...')
+exit(0)

@@ -253,6 +253,8 @@ class Miner:
             self.semaphores[job_type].acquire()
             job_args = self.queues[job_type].get()
             job_func(self, job_args)
+            self.queues[job_type].task_done()  # this is to indicate that the job was processed.
+            # this is important if anyone wants to wait until all jobs in the queue are done
 
     def run(self):
         """
@@ -274,3 +276,12 @@ class Miner:
 
         Thread(target=Miner.consume_specific_job,
                args=(self, 'user_details', Miner.mine_user_details)).start()
+
+    def finish(self):
+        """
+        Finishes all jobs that were produced for the miner, and stop the miner.
+        After calling this function new jobs should not be produced
+        """
+        for type in JOBS_TYPES:
+            self.logger.info('Waiting for {0} jobs to finish'.format(type))
+            self.queues[type].join()
