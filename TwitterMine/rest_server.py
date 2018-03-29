@@ -39,7 +39,7 @@ class RESTServer:
         @self.app.route('/mine/user_details', methods=['POST'])
         def mine_user_details():
             logging.info('user_details request received')
-            args = request.json
+            args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
             self.miner.produce_job('user_details', args)
@@ -48,7 +48,7 @@ class RESTServer:
         @self.app.route('/mine/friends_ids', methods=['POST'])
         def mine_friends_ids():
             logging.info('friends ids request received')
-            args = request.json
+            args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
             if 'limit' not in args:
@@ -60,7 +60,7 @@ class RESTServer:
         @self.app.route('/mine/followers_ids', methods=['POST'])
         def mine_followers_ids():
             logging.info('followers ids request received')
-            args = request.json
+            args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
             if 'limit' not in args:
@@ -72,7 +72,7 @@ class RESTServer:
         @self.app.route('/mine/tweets', methods=['POST'])
         def mine_tweets():
             logging.info('tweets request received')
-            args = request.json
+            args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
             if 'limit' not in args:
@@ -84,7 +84,7 @@ class RESTServer:
         @self.app.route('/mine/likes', methods=['POST'])
         def mine_likes():
             logging.info('likes request received')
-            args = request.json
+            args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
             if 'limit' not in args:
@@ -116,4 +116,5 @@ class RESTServer:
         return r
 
     def run(self, debug=False):
+        self.miner.run()
         self.app.run(debug=debug, port=self.port, threaded=True)

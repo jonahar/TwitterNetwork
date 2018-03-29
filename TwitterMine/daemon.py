@@ -17,10 +17,11 @@ def init_logger(log_file):
     # print log messages to stdout too
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     # ignore logs from some modules, unless their level is warning or higher
-    logging.getLogger("requests").setLevel(logging.WARNING)
-    logging.getLogger("oauthlib").setLevel(logging.WARNING)
-    logging.getLogger("requests_oauthlib").setLevel(logging.WARNING)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger('requests').setLevel(logging.WARNING)
+    logging.getLogger('oauthlib').setLevel(logging.WARNING)
+    logging.getLogger('requests_oauthlib').setLevel(logging.WARNING)
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
 
 def parse_args():
