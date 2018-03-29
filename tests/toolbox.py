@@ -1,7 +1,7 @@
 from TwitterAPI import TwitterAPI
-from lib.data_writer import DataWriter as DW
+from TwitterMine.data_writer import DataWriter as DW
 from tests import CONFIG
-from lib.miner import Miner
+from TwitterMine.miner import Miner
 
 
 def get_config():

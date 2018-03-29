@@ -3,7 +3,7 @@ import logging
 from queue import Queue
 from threading import Semaphore, Thread
 from TwitterAPI import TwitterAPI, TwitterPager
-from lib.data_writer import DataWriter as DW
+from TwitterMine.data_writer import DataWriter as DW
 
 API_FIRST_PAGE = -1
 RATE_LIMIT_CODE = 88
