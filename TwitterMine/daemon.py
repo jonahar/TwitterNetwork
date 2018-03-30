@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 import sys
-from TwitterMine.rest_server import RESTServer
+from TwitterMine.server import Server
 
 
 def init_logger(log_file):
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     with open(server_conf_file) as f:
         config = json.load(f)
     init_logger(config['log_file'])
-    server = RESTServer(config['consumer_key'], config['consumer_secret'],
-                        config['data_dir'], config['port'])
+    server = Server(config['consumer_key'], config['consumer_secret'],
+                    config['data_dir'], config['port'])
     logging.info('Running REST server')
     server.run()

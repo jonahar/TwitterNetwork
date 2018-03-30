@@ -6,7 +6,7 @@ HTTP_SUCCESS_CODE = 200
 HTTP_ERROR_CODE = 400
 
 
-class RESTServer:
+class Server:
     """
     TwitterMine REST server. Listens for requests from clients and executes them.
 
