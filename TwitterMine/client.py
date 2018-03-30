@@ -1,4 +1,5 @@
 import requests
+from requests.exceptions import ConnectionError
 import json
 import re
 import argparse
@@ -25,7 +26,7 @@ headers = {'content-type': 'application/json'}
 mine_command_regex = re.compile(
     '\s*mine\s+(details|friends|followers|tweets|likes)\s+of\s+\w+(\s+\d*)?\s*')
 listen_command_regex = re.compile(
-    '\s*listen\s+to\s+(user\s+\w+)|(keywords?\s+\w+(,\w+)*)\s*')
+    '\s*listen\s+to\s+((user\s+\w+)|(keywords?\s+\w+(,\w+)*))\s*')
 
 
 def parse_args():
@@ -33,8 +34,9 @@ def parse_args():
     parse and return the program arguments
     """
     parser = argparse.ArgumentParser(description='TwitterMine client',
-                                     epilog=commands_help)
-    parser.add_argument('-c', '--conf',
+                                     epilog=commands_help,
+                                     formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-c', '--conf', metavar='config-file',
                         help='configurations file for the client (default \'client.conf\')',
                         required=False, type=str, default='client.conf')
 
@@ -50,8 +52,11 @@ def check_connection():
     Test the connection to the daemon
     :return: True if a request and a response were successfully transmitted to and from the daemon
     """
-    r = requests.get(server_host_port)
-    return r.ok
+    try:
+        r = requests.get(server_host_port)
+        return r.ok
+    except ConnectionError as e:
+        return False
 
 
 def send_request(resource, data):
