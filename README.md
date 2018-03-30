@@ -27,14 +27,10 @@ or display the help menu:
 
 ## Client
 
+The client should be configured with the daemon host and port (see `client.conf` template). config file should be given through the `-c` flag.  
 The client can run in two modes:
-- interactive mode - commands are read from the user via the terminal
-- script mode - commands are read from a file (each command in a new line)
+- interactive mode - commands are read from the user via the terminal. Use with `-i` flag
+- script mode - commands are read from a file, each command in a new line. Use with `-s <script>` flag
 
-To run the client in interactive mode: `python3 -m TwitterMine.client -i`
-
-To run the client in script mode: `python3 -m TwitterMine.client -s <script-file>`
-
-Display the client help to see the different commands format 
-`python3 -m TwitterMine.client -h`
+Obviously, help menu can be displayed with `python3 -m TwitterMine.client -h`
 
