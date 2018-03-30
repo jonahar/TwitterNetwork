@@ -4,6 +4,16 @@ import re
 import argparse
 from sys import stdin
 
+interactive_prompt = """
+Enter a command to execute. Command structure is one of:
+    mine <resource> of <screen_name> [limit]
+    listen to user [screen_name]
+    listen to keywords [comma,separated,keywords]
+
+where resource is one of: 'details', 'friends', 'followers', 'tweets', 'likes'
+Enter 'exit' to quit
+"""
+
 server_host_port = ''
 headers = {'content-type': 'application/json'}
 
@@ -72,26 +82,76 @@ def request_likes(screen_name, limit=0):
     send_request('/mine/likes', data)
 
 
-def execute_command(command):
-    """
-    :param command: string. the command to execute
-    """
+RESOURCE_IDX = 1
+SCR_NAME_IDX = 3
+LIMIT_IDX = 4
+LISTEN_TYPE_IDX = 2
+LISTEN_PARAM_IDX = 3
 
 
-interactive_prompt = """Enter a command to execute. command structure is one of:
-mine [resource] of [screen_name]
-listen to user [screen_name]
-listen to keywords [comma,seperated,keywords]
+class Client:
+    def __init__(self, script=None):
+        self.script = script
+        self.mine_command_regex = re.compile(
+            '\s*mine\s+(details|friends|followers|tweets|likes)\s+of\s+\w+(\s+\d*)?\s*')
+        self.listen_command_regex = re.compile(
+            '\s*listen\s+to\s+(user\s+\w+)|(keywords?\s+\w+(,\w+)*)\s*')
 
-where resource is one of: 'details', 'friends', 'followers', 'tweets', 'likes'\n"""
+    def execute_single_command(self, command):
+        """
+        :param command: string. the command to execute
+        """
+        if self.mine_command_regex.fullmatch(command):
+            tokens = command.split()
+            resource = tokens[RESOURCE_IDX]
+            screen_name = tokens[SCR_NAME_IDX]
+            if len(tokens) > LIMIT_IDX:
+                limit = int(tokens[LIMIT_IDX])
+            else:
+                limit = 0
+            if resource == 'details':
+                request_user_details(screen_name)
+            elif resource == 'friends':
+                request_friends_ids(screen_name, limit)
+            elif resource == 'followers':
+                request_followers_ids(screen_name, limit)
+            elif resource == 'tweets':
+                request_tweets(screen_name, limit)
+            elif resource == 'likes':
+                request_likes(screen_name, limit)
 
+        elif self.listen_command_regex.fullmatch(command):
+            tokens = command.split()
+            listen_type = tokens[LISTEN_TYPE_IDX]
+            param = tokens[LISTEN_PARAM_IDX]
+            if listen_type == 'user':
+                raise NotImplemented('listen to user not implemented')
+            elif listen_type in ['keyword', 'keywords']:
+                raise NotImplemented('listen to keywords not implemented')
+        else:
+            print('Invalid command:', command)
 
-def interactive_mode():
-    print(interactive_prompt)
+    def execute_commands(self, stream):
+        """
+        :param stream: file-like stream  of commands, separated with newlines
+        """
+        for line in stream:
+            line = line[:-1]  # remove newline character
+            if line == '':
+                continue
+            elif line == 'exit':
+                break
+            else:
+                self.execute_single_command(line)
 
+    def interactive_mode(self):
+        stream = stdin
+        self.execute_commands(stream)
 
-def script_mode(script):
-    pass
+    def script_mode(self):
+        stream = open(self.script)
+        self.execute_commands(stream)
+        stream.close()
 
 
 if __name__ == '__main__':
@@ -105,15 +165,6 @@ if __name__ == '__main__':
               'Please check that the daemon is running and the host:port are correct')
         exit(1)
     if args.i:
-        print('interactive move')
+        Client().interactive_mode()
     else:  # script mode
-        script = args.s
-        print('script mode')
-
-
-
-
-
-# command = stdin.readline()
-# command_regex = re.compile('\s*mine\s+(friends|followers|details|tweets|likes)\s+of\s+\w+\s*')
-# command_regex.match(command)
+        Client(args.s).script_mode()
