@@ -4,7 +4,7 @@ import re
 import argparse
 from sys import stdin
 
-interactive_prompt = """
+interactive_prompt = """TwitterMine Client
 Enter a command to execute. Command structure is one of:
     mine <resource> of <screen_name> [limit]
     listen to user [screen_name]
@@ -145,6 +145,7 @@ class Client:
                 self.execute_single_command(line)
 
     def interactive_mode(self):
+        print(interactive_prompt)
         stream = stdin
         self.execute_commands(stream)
 

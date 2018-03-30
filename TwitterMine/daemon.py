@@ -29,7 +29,7 @@ def parse_args():
     parse and return the program arguments
     """
     parser = argparse.ArgumentParser(prog='TwitterMiner Server',
-                                     usage='rest_server [OPTIONS]',
+                                     usage='daemon [OPTIONS]',
                                      description='Twitter data extraction service')
     parser.add_argument('-c', '--conf',
                         help='configurations file for the server (default \'server.conf\')',
