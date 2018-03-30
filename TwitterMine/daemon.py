@@ -31,7 +31,7 @@ def parse_args():
     parser = argparse.ArgumentParser(prog='TwitterMiner Server',
                                      usage='daemon [OPTIONS]',
                                      description='Twitter data extraction service')
-    parser.add_argument('-c', '--conf',
+    parser.add_argument('-c', '--conf', metavar='config-file',
                         help='configurations file for the server (default \'server.conf\')',
                         required=False, type=str, default='server.conf')
     return parser.parse_args()
