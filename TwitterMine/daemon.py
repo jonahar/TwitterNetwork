@@ -46,4 +46,7 @@ if __name__ == '__main__':
     server = Server(config['consumer_key'], config['consumer_secret'],
                     config['data_dir'], config['port'])
     logging.info('Running REST server')
-    server.run()
+    try:
+        server.run()
+    except Exception as e:
+        logging.critical(str(e))
