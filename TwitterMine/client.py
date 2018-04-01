@@ -63,37 +63,37 @@ def send_request(resource, data):
     """
     :param resource: string, server resource path
     :param data: dictionary
+    :return: True on a successful response
     """
     url = server_host_port + resource
     data = json.dumps(data)
     r = requests.post(url, data=data, headers=headers)
-    if not r.ok:
-        print('request to {0} failed. error code {1}'.format(resource, r.status_code))
+    return r.ok
 
 
 def request_user_details(screen_name):
     data = {'screen_name': screen_name}
-    send_request('/mine/user_details', data)
+    return send_request('/mine/user_details', data)
 
 
 def request_friends_ids(screen_name, limit=0):
     data = {'screen_name': screen_name, 'limit': limit}
-    send_request('/mine/friends_ids', data)
+    return send_request('/mine/friends_ids', data)
 
 
 def request_followers_ids(screen_name, limit=0):
     data = {'screen_name': screen_name, 'limit': limit}
-    send_request('/mine/followers_ids', data)
+    return send_request('/mine/followers_ids', data)
 
 
 def request_tweets(screen_name, limit=0):
     data = {'screen_name': screen_name, 'limit': limit}
-    send_request('/mine/tweets', data)
+    return send_request('/mine/tweets', data)
 
 
 def request_likes(screen_name, limit=0):
     data = {'screen_name': screen_name, 'limit': limit}
-    send_request('/mine/likes', data)
+    return send_request('/mine/likes', data)
 
 
 RESOURCE_IDX = 1
@@ -107,7 +107,9 @@ def execute_single_command(command):
     """
     :param command: string. the command to execute
     """
+    ok = False
     if mine_command_regex.fullmatch(command):
+        print('sending request "{0}"... '.format(command), end='')
         tokens = command.split()
         resource = tokens[RESOURCE_IDX]
         screen_name = tokens[SCR_NAME_IDX]
@@ -116,26 +118,33 @@ def execute_single_command(command):
         else:
             limit = 0
         if resource == 'details':
-            request_user_details(screen_name)
+            ok = request_user_details(screen_name)
         elif resource == 'friends':
-            request_friends_ids(screen_name, limit)
+            ok = request_friends_ids(screen_name, limit)
         elif resource == 'followers':
-            request_followers_ids(screen_name, limit)
+            ok = request_followers_ids(screen_name, limit)
         elif resource == 'tweets':
-            request_tweets(screen_name, limit)
+            ok = request_tweets(screen_name, limit)
         elif resource == 'likes':
-            request_likes(screen_name, limit)
+            ok = request_likes(screen_name, limit)
 
     elif listen_command_regex.fullmatch(command):
+        print('sending request "{0}"... '.format(command), end='')
         tokens = command.split()
         listen_type = tokens[LISTEN_TYPE_IDX]
         param = tokens[LISTEN_PARAM_IDX]
+        # todo don't forget to set the ok variable
         if listen_type == 'user':
             raise NotImplemented('listen to user not implemented')
         elif listen_type in ['keyword', 'keywords']:
             raise NotImplemented('listen to keywords not implemented')
     else:
         print('Invalid command:', command)
+        return
+    if ok:
+        print('Done')
+    else:
+        print('Failed. Check server log for more details')
 
 
 def execute_commands(stream):
