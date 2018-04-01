@@ -1,4 +1,3 @@
-import time
 import logging
 from queue import Queue
 from threading import Semaphore, Thread
@@ -6,12 +5,11 @@ from TwitterAPI import TwitterAPI, TwitterPager
 from TwitterMine.data_writer import DataWriter as DW
 from TwitterAPI.TwitterError import TwitterRequestError
 
-API_FIRST_PAGE = -1
 RATE_LIMIT_CODE = 88
 MAX_IDS_LIST = 100000
 MAX_TWEETS_LIST = 500
 
-JOBS_TYPES = ['friends_ids', 'followers_ids', 'tweets', 'likes', 'user_details']  # todo add listen
+JOBS_TYPES = ['user_details', 'friends_ids', 'followers_ids', 'tweets', 'likes']  # todo add listen
 
 
 class Miner:
@@ -51,48 +49,6 @@ class Miner:
         # semaphore value starts from 0 because there are no jobs. at the first acquire by
         # the miner, the miner will be put to sleep
 
-    def _get_limit_info(self, resource):
-        """
-        :param resource: the resource to which you need to get rate limit information
-        :return: a dictionary with the rate limit status
-        """
-        r = self.api.request('application/rate_limit_status', params={'resources': resource})
-        r = r.json()
-        if 'errors' in r:
-            error = r['errors'][0]
-            if error['code'] == RATE_LIMIT_CODE:
-                self.logger.info(
-                    'rate limit exceeded for checking rate limits :) going to sleep for 1 minute')
-                time.sleep(60)
-                return self._get_limit_info(resource)  # try again
-            else:
-                raise Exception(error['message'])
-        return r
-
-    def _handle_error(self, error, resource, endpoint):
-        """
-        handle an error response
-        :param error: the error dictionary returned in the request
-        :param resource: e.g. 'friends'
-        :param endpoint: e.g. 'friends/ids'
-        :return:
-        """
-        if error['code'] == RATE_LIMIT_CODE:
-            # rate limit exceeded
-            # find out how much we need to wait for the limit reset
-            rate_limit_info = self._get_limit_info(resource)
-            reset_time = rate_limit_info['resources'][resource]['/' + endpoint]['reset']
-            time_to_wait = int(reset_time - time.time()) + 10  # wait an extra 10 seconds
-            # just to be on the safe side
-            self.logger.info(
-                'rate limit exceeded for {0}. miner goes to sleep for {1} seconds'.format(endpoint,
-                                                                                          time_to_wait))
-            time.sleep(time_to_wait)
-        else:
-            # another, unrecognized error
-            raise Exception(error['message'])
-            # todo handle this error somehow instead of raising exception
-
     def _mine_user_details(self, args):
         """
         retrieve details of a specific user according to its screen name.
@@ -116,13 +72,12 @@ class Miner:
         if not self.writer.user_details_exist(screen_name):
             self.produce_job('user_details', {'screen_name': screen_name})
 
-    def _mine_friends_followers(self, args, resource, endpoint, writer_func):
+    def _mine_friends_followers(self, args, resource, writer_func):
         """
         retrieve ids of friends or followers
         :param args: dictionary with the screen_name and limit
         :param title: 'friends' or 'followers'
-        :param resource: the resource (e.g. 'friends')
-        :param endpoint: the endpoint (e.g. 'followers/ids')
+        :param resource: the resource (e.g. 'followers/ids')
         :param writer_func: the writer's function to use
         :return:
         """
@@ -135,34 +90,19 @@ class Miner:
             limit = float('inf')
         ids = []
         total = 0  # total number of ids we retrieved so far
-        page = API_FIRST_PAGE
-        while total < limit:
-            r = self.api.request(endpoint,
-                                 params={'screen_name': screen_name,
-                                         'cursor': page})
-            if r.status_code >= 400:
-                logging.error('mining user details failed. Error code {0}'.format(r.status_code))
-                return
-            r = r.json()
-            if 'errors' in r:
-                error = r['errors'][0]
-                self._handle_error(error, resource, endpoint)
-            else:
-                new_ids = r['ids']
-                total_ids_to_add = min(len(new_ids), limit - total)  # how many ids we can
-                # add without exceeding the limit
-                new_ids = new_ids[:total_ids_to_add]
-                ids += new_ids
-                total += len(new_ids)
-                # if we have many ids dump them to disk
+        r = TwitterPager(self.api, resource, params={'screen_name': screen_name})
+        try:
+            for id in r.get_iterator():
+                ids.append(id)
+                total += 1
                 if len(ids) > MAX_IDS_LIST:
                     writer_func(self.writer, ids, screen_name)
                     ids = []
-                page = r['next_cursor']
-                if page == 0:
-                    # no more pages
+                if total >= limit:
                     break
-        writer_func(self.writer, ids, screen_name)
+            writer_func(self.writer, ids, screen_name)
+        except TwitterRequestError:
+            pass  # error will be logged by TwitterRequestError's constructor
 
     def _mine_followers_ids(self, args):
         """
@@ -171,7 +111,7 @@ class Miner:
         :return:
         """
         self.logger.info('mining followers ids for user {0}'.format(args['screen_name']))
-        return self._mine_friends_followers(args, 'followers', 'followers/ids', DW.write_followers)
+        return self._mine_friends_followers(args, 'followers/ids', DW.write_followers)
 
     def _mine_friends_ids(self, args):
         """
@@ -180,14 +120,13 @@ class Miner:
         :return:
         """
         self.logger.info('mining friends ids for user {0}'.format(args['screen_name']))
-        return self._mine_friends_followers(args, 'friends', 'friends/ids', DW.write_friends)
+        return self._mine_friends_followers(args, 'friends/ids', DW.write_friends)
 
-    def _mine_tweets_likes(self, args, resource, endpoint, writer_func):
+    def _mine_tweets_likes(self, args, resource, writer_func):
         """
         retrieve tweets or likes of a user
         :param args: dictionary with keys 'screen_name' and 'limit'
-        :param resource: e.g. 'statuses'
-        :param endpoint: e.g. 'statuses/user_timeline'
+        :param resource: e.g. 'statuses/user_timeline'
         :param writer_func: the writer's function to use
         :return:
         """
@@ -198,24 +137,20 @@ class Miner:
             limit = float('inf')
         tweets = []
         total = 0
-        r = TwitterPager(self.api, endpoint, params={'screen_name': screen_name,
+        r = TwitterPager(self.api, resource, params={'screen_name': screen_name,
                                                      'count': 200,
                                                      'tweet_mode': 'extended'})
         try:
             for t in r.get_iterator():
-                if 'message' in t and 'code' in t:
-                    # t is an error response
-                    self._handle_error(t, resource, endpoint)
-                    continue
                 tweets.append(t)
                 total += 1
                 if len(tweets) > MAX_TWEETS_LIST:
                     writer_func(self.writer, tweets, screen_name)
                     tweets = []
-                if total > limit:
+                if total >= limit:
                     break
             writer_func(self.writer, tweets, screen_name)
-        except TwitterRequestError as e:
+        except TwitterRequestError:
             pass  # error will be logged by TwitterRequestError's constructor
 
     def _mine_tweets(self, args):
@@ -225,8 +160,7 @@ class Miner:
         :return:
         """
         self.logger.info('mining tweets of user {0}'.format(args['screen_name']))
-        return self._mine_tweets_likes(args, 'statuses', 'statuses/user_timeline',
-                                       DW.write_tweets_of_user)
+        return self._mine_tweets_likes(args, 'statuses/user_timeline', DW.write_tweets_of_user)
 
     def _mine_likes(self, args):
         """
@@ -235,12 +169,11 @@ class Miner:
         :return:
         """
         self.logger.info('mining likes of user {0}'.format(args['screen_name']))
-        return self._mine_tweets_likes(args, 'favorites', 'favorites/list',
-                                       DW.write_likes)
+        return self._mine_tweets_likes(args, 'favorites/list', DW.write_likes)
 
-    def _consume_specific_job(self, job_type, job_func):
+    def _run_consumer(self, job_type, job_func):
         """
-        handle all jobs of a specific type. this function does not return and constantly handling or
+        consume all jobs of a specific type. this function does not return and constantly handles or
         waiting for new jobs
         :param job_type: the type of job (one of the constants in miner.JOBS_TYPES)
         :param job_func: the miner function that should be called for handling this job
@@ -271,19 +204,19 @@ class Miner:
         must be called before producing new jobs
         """
         # create thread for each different job type
-        Thread(target=Miner._consume_specific_job,
+        Thread(target=Miner._run_consumer,
                args=(self, 'followers_ids', Miner._mine_followers_ids)).start()
 
-        Thread(target=Miner._consume_specific_job,
+        Thread(target=Miner._run_consumer,
                args=(self, 'friends_ids', Miner._mine_friends_ids)).start()
 
-        Thread(target=Miner._consume_specific_job,
+        Thread(target=Miner._run_consumer,
                args=(self, 'tweets', Miner._mine_tweets)).start()
 
-        Thread(target=Miner._consume_specific_job,
+        Thread(target=Miner._run_consumer,
                args=(self, 'likes', Miner._mine_likes)).start()
 
-        Thread(target=Miner._consume_specific_job,
+        Thread(target=Miner._run_consumer,
                args=(self, 'user_details', Miner._mine_user_details)).start()
 
     def finish(self):
