@@ -1,0 +1,3 @@
+[submodule "TwitterAPI_submodule"]
+	path = TwitterAPI_submodule
+	url = git@github.com:jonahar/TwitterAPI.git
