@@ -59,10 +59,17 @@ class Miner:
         self.logger.info('mining user details of {0}'.format(screen_name))
         r = self.api.request('users/show', params={'screen_name': screen_name})
         if r.status_code >= 400:
-            logging.error('mining user details failed. Error code {0}'.format(r.status_code))
+            try:
+                msg = r.json()['errors'][0]['message']
+                self.logger.error('mining user details failed. {0}'.format(msg))
+            except ValueError:
+                # response body does not contain valid json
+                self.logger.error(
+                    'mining user details failed. Error code {0}'.format(r.status_code))
             return
         details = r.json()
         self.writer.write_user(details)
+        self.logger.info('user details mined successfully')
 
     def _produce_user_details_job(self, screen_name):
         """
@@ -102,7 +109,9 @@ class Miner:
                     break
             writer_func(self.writer, ids, screen_name)
         except TwitterRequestError:
-            pass  # error will be logged by TwitterRequestError's constructor
+            # error will be logged by TwitterRequestError's constructor
+            return False
+        return True
 
     def _mine_followers_ids(self, args):
         """
@@ -111,7 +120,10 @@ class Miner:
         :return:
         """
         self.logger.info('mining followers ids for user {0}'.format(args['screen_name']))
-        return self._mine_friends_followers(args, 'followers/ids', DW.write_followers)
+        if not self._mine_friends_followers(args, 'followers/ids', DW.write_followers):
+            self.logger.error('mining followers failed')
+        else:
+            self.logger.info('followers mined successfully')
 
     def _mine_friends_ids(self, args):
         """
@@ -120,7 +132,10 @@ class Miner:
         :return:
         """
         self.logger.info('mining friends ids for user {0}'.format(args['screen_name']))
-        return self._mine_friends_followers(args, 'friends/ids', DW.write_friends)
+        if not self._mine_friends_followers(args, 'friends/ids', DW.write_friends):
+            self.logger.error('mining friends failed')
+        else:
+            self.logger.info('friends mined successfully')
 
     def _mine_tweets_likes(self, args, resource, writer_func):
         """
@@ -128,7 +143,7 @@ class Miner:
         :param args: dictionary with keys 'screen_name' and 'limit'
         :param resource: e.g. 'statuses/user_timeline'
         :param writer_func: the writer's function to use
-        :return:
+        :return: True if mining ended successfully
         """
         screen_name = args['screen_name']
         limit = args['limit']
@@ -151,7 +166,9 @@ class Miner:
                     break
             writer_func(self.writer, tweets, screen_name)
         except TwitterRequestError:
-            pass  # error will be logged by TwitterRequestError's constructor
+            # error will be logged by TwitterRequestError's constructor
+            return False
+        return True
 
     def _mine_tweets(self, args):
         """
@@ -160,7 +177,10 @@ class Miner:
         :return:
         """
         self.logger.info('mining tweets of user {0}'.format(args['screen_name']))
-        return self._mine_tweets_likes(args, 'statuses/user_timeline', DW.write_tweets_of_user)
+        if not self._mine_tweets_likes(args, 'statuses/user_timeline', DW.write_tweets_of_user):
+            self.logger.error('mining tweets failed')
+        else:
+            self.logger.info('tweets mined successfully')
 
     def _mine_likes(self, args):
         """
@@ -169,7 +189,10 @@ class Miner:
         :return:
         """
         self.logger.info('mining likes of user {0}'.format(args['screen_name']))
-        return self._mine_tweets_likes(args, 'favorites/list', DW.write_likes)
+        if not self._mine_tweets_likes(args, 'favorites/list', DW.write_likes):
+            self.logger.error('mining likes failed')
+        else:
+            self.logger.error('likes mined successfully')
 
     def _run_consumer(self, job_type, job_func):
         """
