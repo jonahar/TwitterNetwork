@@ -26,11 +26,12 @@ class Server:
         self.port = port
         self.app = Flask(__name__)
         self.counter = 0
+        self.logger = logging.getLogger()
 
         # define all endpoints in the REST server
         @self.app.route('/')
         def index():
-            logging.info('server index was accessed')
+            self.logger.info('server index was accessed')
             self.counter += 1
             return "Welcome to TwitterMine REST server!\nFor your convenience a counter is " \
                    "increased each time this index page is accessed.\n" \
@@ -38,7 +39,7 @@ class Server:
 
         @self.app.route('/mine/user_details', methods=['POST'])
         def mine_user_details():
-            logging.info('user_details request received')
+            self.logger.info('user_details request received')
             args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
@@ -47,7 +48,7 @@ class Server:
 
         @self.app.route('/mine/friends_ids', methods=['POST'])
         def mine_friends_ids():
-            logging.info('friends ids request received')
+            self.logger.info('friends ids request received')
             args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
@@ -59,7 +60,7 @@ class Server:
 
         @self.app.route('/mine/followers_ids', methods=['POST'])
         def mine_followers_ids():
-            logging.info('followers ids request received')
+            self.logger.info('followers ids request received')
             args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
@@ -71,7 +72,7 @@ class Server:
 
         @self.app.route('/mine/tweets', methods=['POST'])
         def mine_tweets():
-            logging.info('tweets request received')
+            self.logger.info('tweets request received')
             args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
@@ -83,7 +84,7 @@ class Server:
 
         @self.app.route('/mine/likes', methods=['POST'])
         def mine_likes():
-            logging.info('likes request received')
+            self.logger.info('likes request received')
             args = request.get_json()
             if not self.check_screen_name(args):
                 return self.miss_arg_response()
