@@ -3,13 +3,17 @@ from queue import Queue
 from threading import Thread
 from TwitterAPI import TwitterAPI, TwitterPager
 from TwitterMine.data_writer import DataWriter as DW
-from TwitterAPI.TwitterError import TwitterRequestError
+from TwitterAPI.TwitterError import TwitterRequestError, TwitterConnectionError
 
+HTTP_OK = 200
 RATE_LIMIT_CODE = 88
 MAX_IDS_LIST = 100000
 MAX_TWEETS_LIST = 500
+STOP_SIGNAL = None  # this is a sign to all miner threads to stop
 
 JOBS_TYPES = ['user_details', 'friends_ids', 'followers_ids', 'tweets', 'likes', 'listen']
+
+FILTER_LEVEL = 'none'  # 'none' || 'low' || 'medium', to control the rate of incoming tweets
 
 
 class Miner:
@@ -46,12 +50,28 @@ class Miner:
         :param data_dir: main directory to store the data
         """
         self.api = TwitterAPI(consumer_key, consumer_secret,
-                              access_token_key, access_token_secret,
-                              auth_type='oAuth2')  # todo do 4 keys work with oauth2?
+                              access_token_key, access_token_secret)
         self.writer = DW(data_dir)
         self.logger = logging.getLogger()
         self.queues = {type: Queue() for type in JOBS_TYPES}
         # python queues are thread safe and don't require locks for multi-producers/consumers
+
+        # create thread for each different job type
+        self.threads = [
+            Thread(target=Miner._run_consumer,
+                   args=(self, 'followers_ids', Miner._mine_followers_ids)),
+            Thread(target=Miner._run_consumer,
+                   args=(self, 'friends_ids', Miner._mine_friends_ids)),
+            Thread(target=Miner._run_consumer,
+                   args=(self, 'tweets', Miner._mine_tweets)),
+            Thread(target=Miner._run_consumer,
+                   args=(self, 'likes', Miner._mine_likes)),
+            Thread(target=Miner._run_consumer,
+                   args=(self, 'user_details', Miner._mine_user_details)),
+            Thread(target=Miner._run_consumer,
+                   args=(self, 'listen', Miner._listen))]
+
+        assert (len(JOBS_TYPES) == len(self.threads))  # one thread per job type
 
     def _mine_user_details(self, args):
         """
@@ -198,6 +218,97 @@ class Miner:
         else:
             self.logger.error('likes mined successfully')
 
+    def _update_listen_parameters(self, track, follow, args):
+        """
+        update the current listen parameters (track and follow) according to the given args
+        :param track: set
+        :param follow: set
+        :param args: args dictionary to the listen job
+        :return: a tuple (track, follow) - the updated sets
+        """
+        if args['type'] == 'add':
+            if 'track' in args:
+                track = track.union(args['track'])
+            if 'follow' in args:
+                follow = follow.union(args['follow'])
+        elif args['type'] == 'remove':
+            if 'track' in args:
+                track = track.difference(args['track'])
+            if 'follow' in args:
+                follow = follow.difference(args['follow'])
+        return track, follow
+
+    def _listen(self):
+        """
+        this function handles all listen jobs.
+        the args to a listen job is a dictionary with the following structure
+             {'type'   : 'add' / 'remove',
+              'track'  : ['term1', 'term2', ... ],
+              'follow' : ['id1', 'id2', ... ] }
+
+        :return: this function does not return
+        """
+        track = set()
+        follow = set()
+        args_queue = self.queues['listen']
+        while True:
+            try:
+                while (not args_queue.empty()) or (not track and not follow):
+                    # there are more arguments to process OR both track and follow are empty
+                    args = args_queue.get(block=True, timeout=None)  # will block if queue is empty
+                    if args is STOP_SIGNAL:
+                        return
+                    args_queue.task_done()
+                    track, follow = self._update_listen_parameters(track, follow, args)
+                self.logger.info(
+                    'listening: track={0}, follow={1}'.format(str(track), str(follow)))
+                r = self.api.request('statuses/filter', {'track': ','.join(track),
+                                                         'follow': ','.join(follow),
+                                                         'tweet_mode': 'extended',
+                                                         'stall_warnings': 'true',
+                                                         'filter_level': FILTER_LEVEL})
+                iterator = r.get_iterator()
+                for item in iterator:
+                    if item:
+                        if 'warning' in item:
+                            self.logger.warning(item['warning']['message'])
+                        elif 'disconnect' in item:
+                            event = item['disconnect']
+                            self.logger.error('streaming API shutdown: {0}'.format(event['reason']))
+                            break
+                        elif 'text' in item or 'full_text' in item or 'extended_tweet' in item:
+                            # item is a tweet json. ready to be written
+                            self.writer.write_tweets_of_user([item], item['user']['screen_name'])
+
+                        # currently, no use in the following types of messages
+                        elif 'delete' in item:
+                            # user deleted a tweet
+                            tweet = item['status']
+                            pass
+                        elif 'limit' in item:
+                            # more Tweets were matched than the current rate limit allows
+                            pass
+                        elif 'event' in item and item['event'] == 'user_update':
+                            # user updated his profile
+                            pass
+
+                    if not args_queue.empty():
+                        # new job args received. close current connection, update args and
+                        # start again
+                        r.close()
+                        break
+
+            except TwitterRequestError as e:
+                if e.status_code < 500:
+                    # something needs to be fixed before re-connecting
+                    raise
+                else:
+                    # temporary interruption, re-try request
+                    pass
+            except TwitterConnectionError:
+                # temporary interruption, re-try request
+                pass
+
     def _run_consumer(self, job_type, job_func):
         """
         consume all jobs of a specific type. this function does not return and constantly handles or
@@ -206,12 +317,18 @@ class Miner:
         :param job_func: the miner function that should be called for handling this job
         :return:
         """
-        while True:
-            job_args = self.queues[job_type].get(block=True,
-                                                 timeout=None)  # if no job available, block until new job arrives
-            job_func(self, job_args)
-            self.queues[job_type].task_done()  # this is to indicate that the job was processed.
-            # this is important if anyone wants to wait until all jobs in the queue are done
+        if job_type == 'listen':
+            job_func(self)
+        else:  # standard rest API job
+            while True:
+                job_args = self.queues[job_type].get(block=True,
+                                                     timeout=None)
+                if job_args is STOP_SIGNAL:
+                    return
+                # if no job available, get() will block until new job arrives
+                job_func(self, job_args)
+                self.queues[job_type].task_done()  # this is to indicate that the job was processed.
+                # this is important if anyone wants to wait until all jobs in the queue are done
 
     def produce_job(self, job_type, args):
         """
@@ -220,6 +337,8 @@ class Miner:
         :param args: dictionary with the needed arguments for this job
         :return:
         """
+        if args is STOP_SIGNAL:
+            self.logger.error('invalid job arguments to "{0}"'.format(job_type))
         if job_type not in JOBS_TYPES:
             raise ValueError('Unsupported job type: "{0}"'.format(job_type))
         self.queues[job_type].put(args)
@@ -229,29 +348,18 @@ class Miner:
         Start the miner.
         must be called before producing new jobs
         """
-        # create thread for each different job type
-        Thread(target=Miner._run_consumer,
-               args=(self, 'followers_ids', Miner._mine_followers_ids)).start()
+        for t in self.threads:
+            t.start()
 
-        Thread(target=Miner._run_consumer,
-               args=(self, 'friends_ids', Miner._mine_friends_ids)).start()
-
-        Thread(target=Miner._run_consumer,
-               args=(self, 'tweets', Miner._mine_tweets)).start()
-
-        Thread(target=Miner._run_consumer,
-               args=(self, 'likes', Miner._mine_likes)).start()
-
-        Thread(target=Miner._run_consumer,
-               args=(self, 'user_details', Miner._mine_user_details)).start()
-
-        # todo create a thread for the listen job type
-
-    def finish(self):
+    def stop(self):
         """
         Finishes all jobs that were produced for the miner, and stop the miner.
         After calling this function new jobs should not be produced
         """
-        for type in JOBS_TYPES:
-            self.logger.info('Waiting for {0} jobs to finish'.format(type))
-            self.queues[type].join()
+        self.logger.info('notify all miner threads to stop')
+        for q in self.queues:
+            q.put(STOP_SIGNAL)
+        self.logger.info('wait for all miner threads to stop')
+        for t in self.threads:
+            t.join()
+        self.logger.info('miner stopped')
