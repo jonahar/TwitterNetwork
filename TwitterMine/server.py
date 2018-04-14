@@ -15,27 +15,47 @@ class Server:
     is finished)
     """
 
-    def __init__(self, consumer_key, consumer_secret, data_dir, port):
+    def __init__(self, consumer_key, consumer_secret, access_token_key, access_token_secret,
+                 data_dir, port):
         """
-        :param consumer_key: Twitter API key
-        :param consumer_secret: Twitter API secret key
+        :param consumer_key:
+        :param consumer_secret:
+        :param access_token_key:
+        :param access_token_secret:
         :param data_dir: directory for storing the extracted information
         :param port: the port to listen for incoming requests
         """
-        self.miner = Miner(consumer_key, consumer_secret, data_dir)
+        self.miner = Miner(consumer_key, consumer_secret, access_token_key, access_token_secret,
+                           data_dir)
         self.port = port
         self.app = Flask(__name__)
-        self.counter = 0
+        self.dummy_counter = 0
         self.logger = logging.getLogger()
 
         # define all endpoints in the REST server
-        @self.app.route('/')
+        @self.app.route('/', methods=['GET', 'POST'])
         def index():
             self.logger.info('server index was accessed')
-            self.counter += 1
+            self.dummy_counter += 1
             return "Welcome to TwitterMine REST server!\nFor your convenience a counter is " \
                    "increased each time this index page is accessed.\n" \
-                   "Current counter value: {}\n".format(self.counter)
+                   "Current counter value: {}\n".format(self.dummy_counter)
+
+        # todo test this endpoint
+        @self.app.route('/shutdown', methods=['GET', 'POST'])
+        def shutdown():
+            self.logger.info('shutdown request received')
+            self.logger.info('stopping miner...')
+            self.miner.stop()
+            func = request.environ.get('werkzeug.server.shutdown')
+            if func is None:
+                self.logger.error('Server couldn\'t terminate properly' +
+                                  '(not running with the Werkzeug Server). ' +
+                                  'Terminating entire program')
+                exit(1)
+            func()
+            self.logger.info('Server shutting down...')
+            return self.success_response()
 
         @self.app.route('/mine/user_details', methods=['POST'])
         def mine_user_details():
@@ -92,6 +112,15 @@ class Server:
                 # limit was not specified. use default
                 args['limit'] = 0
             self.miner.produce_job('likes', args)
+            return self.success_response()
+
+        @self.app.route('/listen', methods=['POST'])
+        def listen():
+            self.logger.info('listen request received')
+            args = request.get_json()
+            if 'mode' not in args or ('track' not in args and 'follow' not in args):
+                return self.miss_arg_response()
+            self.miner.produce_job('listen', args)
             return self.success_response()
 
     def check_screen_name(self, args):

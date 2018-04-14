@@ -44,6 +44,7 @@ if __name__ == '__main__':
         config = json.load(f)
     init_logger(config['log_file'])
     server = Server(config['consumer_key'], config['consumer_secret'],
+                    config['access_token_key'], config['access_token_secret'],
                     config['data_dir'], config['port'])
     logging.info('Running REST server')
     try:
