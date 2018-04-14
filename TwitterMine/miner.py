@@ -1,6 +1,6 @@
 import logging
 from queue import Queue
-from threading import Semaphore, Thread
+from threading import Thread
 from TwitterAPI import TwitterAPI, TwitterPager
 from TwitterMine.data_writer import DataWriter as DW
 from TwitterAPI.TwitterError import TwitterRequestError
@@ -9,7 +9,7 @@ RATE_LIMIT_CODE = 88
 MAX_IDS_LIST = 100000
 MAX_TWEETS_LIST = 500
 
-JOBS_TYPES = ['user_details', 'friends_ids', 'followers_ids', 'tweets', 'likes']  # todo add listen
+JOBS_TYPES = ['user_details', 'friends_ids', 'followers_ids', 'tweets', 'likes', 'listen']
 
 
 class Miner:
@@ -23,8 +23,10 @@ class Miner:
     a special queue to which new jobs are inserted. A new job will appear in the queue in the form
     of a dictionary that consist of all needed arguments for this job.
 
+    To properly close the miner (finish all its current jobs and writes) call the finish() method.
+
     For more information about what arguments are needed for a specific job, look at the doc of its
-    corresponding mine function, e.g. for adding new job for getting followers ids look
+    corresponding mine function, e.g. to add new job for getting followers ids look
     at _mine_followers_ids()
 
     New jobs should be added only via the produce_job() function
@@ -33,27 +35,29 @@ class Miner:
     there is no need to call mine_user_details for users for which we perform other mining jobs.
     """
 
-    def __init__(self, consumer_key, consumer_secret, data_dir):
+    def __init__(self, consumer_key, consumer_secret,
+                 access_token_key, access_token_secret, data_dir):
         """
         Construct a new Miner for retrieving data from Twitter
         :param consumer_key:
         :param consumer_secret:
+        :param access_token_key:
+        :param access_token_secret:
         :param data_dir: main directory to store the data
         """
-        self.api = TwitterAPI(consumer_key, consumer_secret, auth_type='oAuth2')
+        self.api = TwitterAPI(consumer_key, consumer_secret,
+                              access_token_key, access_token_secret,
+                              auth_type='oAuth2')  # todo do 4 keys work with oauth2?
         self.writer = DW(data_dir)
         self.logger = logging.getLogger()
         self.queues = {type: Queue() for type in JOBS_TYPES}
         # python queues are thread safe and don't require locks for multi-producers/consumers
-        self.semaphores = {type: Semaphore(value=0) for type in JOBS_TYPES}
-        # semaphore value starts from 0 because there are no jobs. at the first acquire by
-        # the miner, the miner will be put to sleep
 
     def _mine_user_details(self, args):
         """
         retrieve details of a specific user according to its screen name.
         :param args: dictionary with a key 'screen_name' which indicates the user to retrieve
-        :return:
+        :return: the id (integer) of the user
         """
         screen_name = args['screen_name']
         self.logger.info('mining user details of {0}'.format(screen_name))
@@ -70,6 +74,7 @@ class Miner:
         details = r.json()
         self.writer.write_user(details)
         self.logger.info('user details mined successfully')
+        return details['id']
 
     def _produce_user_details_job(self, screen_name):
         """
@@ -83,8 +88,7 @@ class Miner:
         """
         retrieve ids of friends or followers
         :param args: dictionary with the screen_name and limit
-        :param title: 'friends' or 'followers'
-        :param resource: the resource (e.g. 'followers/ids')
+        :param resource: the resource ('followers/ids' or 'friends/ids')
         :param writer_func: the writer's function to use
         :return:
         """
@@ -141,7 +145,7 @@ class Miner:
         """
         retrieve tweets or likes of a user
         :param args: dictionary with keys 'screen_name' and 'limit'
-        :param resource: e.g. 'statuses/user_timeline'
+        :param resource: 'statuses/user_timeline' or 'favorites/list'
         :param writer_func: the writer's function to use
         :return: True if mining ended successfully
         """
@@ -203,8 +207,8 @@ class Miner:
         :return:
         """
         while True:
-            self.semaphores[job_type].acquire()
-            job_args = self.queues[job_type].get()
+            job_args = self.queues[job_type].get(block=True,
+                                                 timeout=None)  # if no job available, block until new job arrives
             job_func(self, job_args)
             self.queues[job_type].task_done()  # this is to indicate that the job was processed.
             # this is important if anyone wants to wait until all jobs in the queue are done
@@ -219,7 +223,6 @@ class Miner:
         if job_type not in JOBS_TYPES:
             raise ValueError('Unsupported job type: "{0}"'.format(job_type))
         self.queues[job_type].put(args)
-        self.semaphores[job_type].release()
 
     def run(self):
         """
@@ -241,6 +244,8 @@ class Miner:
 
         Thread(target=Miner._run_consumer,
                args=(self, 'user_details', Miner._mine_user_details)).start()
+
+        # todo create a thread for the listen job type
 
     def finish(self):
         """
