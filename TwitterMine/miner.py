@@ -5,8 +5,6 @@ from TwitterAPI import TwitterAPI, TwitterPager
 from TwitterMine.data_writer import DataWriter as DW
 from TwitterAPI.TwitterError import TwitterRequestError, TwitterConnectionError
 
-HTTP_OK = 200
-RATE_LIMIT_CODE = 88
 MAX_IDS_LIST = 100000
 MAX_TWEETS_LIST = 500
 STOP_SIGNAL = None  # this is a sign to all miner threads to stop
@@ -226,12 +224,12 @@ class Miner:
         :param args: args dictionary to the listen job
         :return: a tuple (track, follow) - the updated sets
         """
-        if args['type'] == 'add':
+        if args['mode'] == 'add':
             if 'track' in args:
                 track = track.union(args['track'])
             if 'follow' in args:
                 follow = follow.union(args['follow'])
-        elif args['type'] == 'remove':
+        elif args['mode'] == 'remove':
             if 'track' in args:
                 track = track.difference(args['track'])
             if 'follow' in args:
@@ -242,7 +240,7 @@ class Miner:
         """
         this function handles all listen jobs.
         the args to a listen job is a dictionary with the following structure
-             {'type'   : 'add' / 'remove',
+             {'mode'   : 'add' / 'remove',
               'track'  : ['term1', 'term2', ... ],
               'follow' : ['id1', 'id2', ... ] }
 
@@ -357,8 +355,8 @@ class Miner:
         After calling this function new jobs should not be produced
         """
         self.logger.info('notify all miner threads to stop')
-        for q in self.queues:
-            q.put(STOP_SIGNAL)
+        for type in JOBS_TYPES:
+            self.queues[type].put(STOP_SIGNAL)
         self.logger.info('wait for all miner threads to stop')
         for t in self.threads:
             t.join()
