@@ -12,7 +12,7 @@ daemon to handle.
 
 TwitterMine depends on a forked version of TwitterAPI, so be sure to get the correct version which
 is linked here as a sub-module (installing TwitterAPI via pip for example will not be compatible).  
-An easy way to set things up is to download the [release tarball](https://github.com/jonahar/TwitterMine/releases/download/v0.1/TwitterMine-v0.1.tar) and run TwitterMine
+The most easy way to set things up is to download the release tarball from the [Releases](https://github.com/jonahar/TwitterMine/releases) page, and run TwitterMine
 modules from the top directory using python's `-m` flag.
 
 
