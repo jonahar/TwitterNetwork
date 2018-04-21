@@ -147,4 +147,4 @@ class Server:
 
     def run(self, debug=False):
         self.miner.run()
-        self.app.run(debug=debug, port=self.port, threaded=True)
+        self.app.run(host='0.0.0.0', debug=debug, port=self.port, threaded=True)
