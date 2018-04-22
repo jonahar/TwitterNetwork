@@ -214,7 +214,7 @@ class Miner:
         if not self._mine_tweets_likes(args, 'favorites/list', DW.write_likes):
             self.logger.error('mining likes failed')
         else:
-            self.logger.error('likes mined successfully')
+            self.logger.info('likes mined successfully')
 
     def _update_listen_parameters(self, track, follow, args):
         """
