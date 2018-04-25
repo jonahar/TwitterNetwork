@@ -4,6 +4,9 @@ import logging
 from threading import Lock
 
 NEWLINE = '\n'
+# directory for writing stream tweets. prefix '#' is necessary so this dir will not be in conflict
+# with a legal twitter screen name
+STREAMS_TOP_DIR_NAME = '#streams'
 
 
 class DataWriter:
@@ -14,6 +17,9 @@ class DataWriter:
         self.data_dir = data_dir
         if not os.path.isdir(data_dir):
             os.makedirs(data_dir)
+        self.streams_top_dir = os.path.join(self.data_dir, STREAMS_TOP_DIR_NAME)
+        if not os.path.isdir(self.streams_top_dir):
+            os.makedirs(self.streams_top_dir)
         self.logger = logging.getLogger()
         self.init_dir_lock = Lock()
 
@@ -27,7 +33,7 @@ class DataWriter:
         this functions is used for when new data should be stored under this user (i.e. a tweet
         by this user was added, but user details weren't)
 
-        :param id: string, id of the new user
+        :param scr_name: string, the screen name of the user
         :return: the user's directory full path
         """
         user_dir = self._get_user_dir(scr_name)
@@ -37,6 +43,16 @@ class DataWriter:
             os.mkdir(user_dir)
         self.init_dir_lock.release()
         return user_dir
+
+    def _init_stream_dir(self, stream_str):
+        """
+        creates a directory for a stream, if not already exists
+        :return: the path of the stream directory
+        """
+        stream_dir = os.path.join(self.streams_top_dir, stream_str)
+        if not os.path.isdir(stream_dir):
+            os.mkdir(stream_dir)
+        return stream_dir
 
     def user_details_exist(self, screen_name):
         """
@@ -106,6 +122,25 @@ class DataWriter:
         user_dir = self._init_user_dir(screen_name)
         tweets_file_path = os.path.join(user_dir, 'tweets')
         with open(tweets_file_path, 'a+') as f:
+            for t in tweets:
+                data = json.dumps(t).replace(NEWLINE, ' ')
+                f.write(data)
+                f.write(NEWLINE)
+
+    def write_tweets_of_stream(self, tweets, stream_str):
+        """
+        writing to the database a set of tweets, which are related to some stream (for
+        instance, tweets that were returned by twitter's Streaming API).
+
+        All tweets coming from streams are written in files inside a directory #streams
+
+        :param tweets: list of dictionaries. each dictionary correspond to a single tweet
+        :param stream_str: a string representation of the stream. this is also the name of the file
+        to which the tweets are written.
+        """
+        stream_dir = self._init_stream_dir(stream_str)  # e.g. data_dir/#streams/<stream_str>
+        stream_file = os.path.join(stream_dir, 'tweets')
+        with open(stream_file, 'a+') as f:
             for t in tweets:
                 data = json.dumps(t).replace(NEWLINE, ' ')
                 f.write(data)

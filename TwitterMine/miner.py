@@ -108,10 +108,8 @@ class Miner:
         :param args: dictionary with the screen_name and limit
         :param resource: the resource ('followers/ids' or 'friends/ids')
         :param writer_func: the writer's function to use
-        :return:
+        :return: True on a successful mining. False on error
         """
-        # Unfortunately TwitterPager does not work with the ids methods.
-        # Consider forking TwitterAPI
         screen_name = args['screen_name']
         limit = args['limit']
         self._produce_user_details_job(screen_name)
@@ -236,6 +234,18 @@ class Miner:
                 follow = follow.difference(args['follow'])
         return track, follow
 
+    def _get_listen_query_representation(self, track, follow):
+        """
+        return a unique string representation for a twitter's listen request. representation depends
+        on the request arguments track and follow
+        :param track: set of strings
+        :param follow: set of strings
+        :return: string - representation of the listen request
+        """
+        keywords = [term for term in track] + [term for term in follow]
+        keywords.sort()
+        return '.'.join(keywords)
+
     def _listen(self):
         """
         this function handles all listen jobs.
@@ -265,6 +275,8 @@ class Miner:
                                                          'tweet_mode': 'extended',
                                                          'stall_warnings': 'true',
                                                          'filter_level': FILTER_LEVEL})
+                stream_str = self._get_listen_query_representation(track, follow)  # the string
+                # representation of the stream
                 iterator = r.get_iterator()
                 for item in iterator:
                     if item:
@@ -275,8 +287,8 @@ class Miner:
                             self.logger.error('streaming API shutdown: {0}'.format(event['reason']))
                             break
                         elif 'text' in item or 'full_text' in item or 'extended_tweet' in item:
-                            # item is a tweet json. ready to be written
-                            self.writer.write_tweets_of_user([item], item['user']['screen_name'])
+                            # item is a tweet. ready to be written
+                            self.writer.write_tweets_of_stream([item], stream_str)
 
                         # currently, no use in the following types of messages
                         elif 'delete' in item:
