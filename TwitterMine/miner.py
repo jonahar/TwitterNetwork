@@ -1,7 +1,9 @@
 import logging
+import time
 from queue import Queue
 from threading import Thread
-from TwitterAPI import TwitterAPI, TwitterPager
+from TwitterAPI.TwitterAPI import TwitterAPI
+from TwitterAPI.TwitterPager import TwitterPager
 from TwitterMine.data_writer import DataWriter as DW
 from TwitterAPI.TwitterError import TwitterRequestError, TwitterConnectionError
 
@@ -79,6 +81,7 @@ class Miner:
         """
         screen_name = args['screen_name']
         self.logger.info('mining user details of {0}'.format(screen_name))
+        time.sleep(1)  # one request per second will avoid rate limit
         r = self.api.request('users/show', params={'screen_name': screen_name})
         if r.status_code >= 400:
             try:
@@ -93,6 +96,8 @@ class Miner:
         self.writer.write_user(details)
         self.logger.info('user details mined successfully')
         return details['id']
+
+    # todo implement mine function for users/lookup (retrieve multiple users details)
 
     def _produce_user_details_job(self, screen_name):
         """
