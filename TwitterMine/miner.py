@@ -82,20 +82,24 @@ class Miner:
         screen_name = args['screen_name']
         self.logger.info('mining user details of {0}'.format(screen_name))
         time.sleep(1)  # one request per second will avoid rate limit
-        r = self.api.request('users/show', params={'screen_name': screen_name})
-        if r.status_code >= 400:
-            try:
-                msg = r.json()['errors'][0]['message']
-                self.logger.error('mining user details failed. {0}'.format(msg))
-            except ValueError:
-                # response body does not contain valid json
-                self.logger.error(
-                    'mining user details failed. Error code {0}'.format(r.status_code))
-            return
-        details = r.json()
-        self.writer.write_user(details)
-        self.logger.info('user details mined successfully')
-        return details['id']
+        try:
+            r = self.api.request('users/show', params={'screen_name': screen_name})
+            if r.status_code >= 400:
+                try:
+                    msg = r.json()['errors'][0]['message']
+                    self.logger.error('mining user details failed. {0}'.format(msg))
+                except ValueError:
+                    # response body does not contain valid json
+                    self.logger.error(
+                        'mining user details failed. Error code {0}'.format(r.status_code))
+                return
+            details = r.json()
+            self.writer.write_user(details)
+            self.logger.info('user details mined successfully')
+            return details['id']
+        except TwitterConnectionError as e:
+            # message is logged the TwitterConnectionError constructor
+            return None
 
     # todo implement mine function for users/lookup (retrieve multiple users details)
 
