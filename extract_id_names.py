@@ -1,7 +1,7 @@
 import os
 import json
 
-data_dir = '/home/jona/Downloads'
+data_dir = '/cs/labs/avivz/jonahar/Twitter/data_dir'
 network_users = dict()
 for scr_name in os.listdir(data_dir):
     sub_dir = os.path.join(data_dir, scr_name)
@@ -18,6 +18,6 @@ for scr_name in os.listdir(data_dir):
         if not os.path.isfile(friends_file):
             print('Missing friends of user', scr_name)
 
-network_file = open('network_users.json')
+network_file = open('network_users.json', mode='w')
 json.dump(network_users, network_file)
 network_file.close()
