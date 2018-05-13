@@ -1,11 +1,4 @@
 import sys
-
-# for importing TwitterAPI in the dev folder structure
-try:
-    sys.path.insert(0, 'TwitterAPI_submodule')
-except Exception as e:
-    pass
-
 import os
 import logging
 import json
