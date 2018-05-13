@@ -8,8 +8,9 @@ NEWLINE = '\n'
 
 miner = test_toolbox.get_miner()
 api = miner.api
-SEARCH_TERM = 'netanyahu-nuclear-iran'
-MIN_RETWEETS = 300
+# SEARCH_TERM = 'iota (crypto OR cryptocurrency) -xrp'
+SEARCH_TERM = 'bitcoin OR btc'
+MIN_RETWEETS = 400
 MIN_LIKES = 0
 MAX_TWEETS = 10000
 
@@ -62,9 +63,9 @@ def user_repr(user):
 
 out_filename = SEARCH_TERM + '.results'
 
-with open(out_filename, mode='a+') as outfile:
+with open(out_filename, mode='w') as outfile:
     count = 0
-    for t in search_tweets('netanyahu nuclear iran', MIN_RETWEETS, MIN_LIKES):
+    for t in search_tweets(SEARCH_TERM, MIN_RETWEETS, MIN_LIKES):
         outfile.write(user_repr(t['user']))
         outfile.write(NEWLINE)
         if 'retweeted_status' in t:
