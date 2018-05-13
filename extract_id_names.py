@@ -1,6 +1,8 @@
 import os
 import json
 
+# creates a dictionary of id:name for every user in the data dir
+
 data_dir = '/cs/labs/avivz/jonahar/Twitter/data_dir'
 network_users = dict()
 for scr_name in os.listdir(data_dir):
