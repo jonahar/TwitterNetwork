@@ -3,7 +3,9 @@ import json
 
 # creates a dictionary of id:name for every user in the data dir
 
-data_dir = '/cs/labs/avivz/jonahar/Twitter/data_dir'
+data_dir = '/cs/labs/avivz/jonahar/Twitter/data_dir_netanyahu_nuclear_iran'
+network_filename = '/cs/labs/avivz/jonahar/Twitter/iran_network_users.json'
+
 network_users = dict()
 for scr_name in os.listdir(data_dir):
     sub_dir = os.path.join(data_dir, scr_name)
@@ -13,13 +15,13 @@ for scr_name in os.listdir(data_dir):
         if os.path.isfile(details_file):
             f = open(details_file)
             details = json.load(f)
-            network_users[details['id']] = details['name']
+            network_users[details['id']] = details['screen_name']
             f.close()
         else:
             print('Missing details for user', scr_name)
         if not os.path.isfile(friends_file):
             print('Missing friends of user', scr_name)
 
-network_file = open('network_users.json', mode='w')
+network_file = open(network_filename, mode='w')
 json.dump(network_users, network_file)
 network_file.close()
