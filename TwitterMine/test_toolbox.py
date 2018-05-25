@@ -3,7 +3,7 @@ import os
 import logging
 import json
 from TwitterMine.server import Server
-from TwitterAPI import TwitterAPI
+from TwitterAPI.TwitterAPI import TwitterAPI
 from TwitterMine.data_writer import DataWriter as DW
 from TwitterMine.miner import Miner
 
