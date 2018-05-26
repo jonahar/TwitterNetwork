@@ -163,3 +163,15 @@ class DataWriter:
                 data = json.dumps(t).replace(NEWLINE, ' ')
                 f.write(data)
                 f.write(NEWLINE)
+
+    def write_neighbors(self, neighbors, screen_name):
+        """
+        :param neighbors: list of strings
+        :param screen_name: the user to write neighbors to
+        """
+        user_dir = self._init_user_dir(screen_name)
+        user_neighbors_file = os.path.join(user_dir, 'neighbors')
+        with open(user_neighbors_file, mode='a+', encoding='utf-8') as f:
+            for n in neighbors:
+                f.write(n)
+                f.write('\n')

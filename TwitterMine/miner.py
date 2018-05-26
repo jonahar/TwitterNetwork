@@ -6,12 +6,14 @@ from TwitterAPI.TwitterAPI import TwitterAPI
 from TwitterAPI.TwitterPager import TwitterPager
 from TwitterMine.data_writer import DataWriter as DW
 from TwitterAPI.TwitterError import TwitterRequestError, TwitterConnectionError
+import TwitterMine.utils as utils
 
 MAX_IDS_LIST = 100000
 MAX_TWEETS_LIST = 500
 STOP_SIGNAL = None  # this is a sign to all miner threads to stop
 
-JOBS_TYPES = ['user_details', 'friends_ids', 'followers_ids', 'tweets', 'likes', 'listen']
+JOBS_TYPES = ['user_details', 'friends_ids', 'followers_ids', 'tweets',
+              'likes', 'neighbors', 'listen']
 
 FILTER_LEVEL = 'none'  # 'none' || 'low' || 'medium', to control the rate of incoming tweets
 
@@ -69,9 +71,10 @@ class Miner:
             Thread(target=Miner._run_consumer,
                    args=(self, 'user_details', Miner._mine_user_details)),
             Thread(target=Miner._run_consumer,
-                   args=(self, 'listen', Miner._listen))]
-
-        assert (len(JOBS_TYPES) == len(self.threads))  # one thread per job type
+                   args=(self, 'neighbors', Miner._mine_neighbors)),
+            Thread(target=Miner._run_consumer,
+                   args=(self, 'listen', Miner._listen))
+        ]
 
     def _mine_user_details(self, args):
         """
@@ -100,8 +103,6 @@ class Miner:
         except TwitterConnectionError as e:
             # message is logged the TwitterConnectionError constructor
             return None
-
-    # todo implement mine function for users/lookup (retrieve multiple users details)
 
     def _produce_user_details_job(self, screen_name):
         """
@@ -223,6 +224,41 @@ class Miner:
         else:
             self.logger.info('likes mined successfully')
 
+    def _mine_neighbors(self, args):
+        """
+        this function mines neighbors of a given user.
+        A is considered a neighbor of B if B commented to A's tweet, or retweeted a tweet by A
+        This method may be good for analyzing connections in a network, other than the following
+        relationship.
+
+        a neighbor may be counted more than once (if this user commented/retweeted multiple
+        times)
+
+        :param args: dictionary with keys 'screen_name' and 'limit'
+        """
+        screen_name = args['screen_name']
+        limit = args['limit']
+        self._produce_user_details_job(screen_name)
+        if limit == 0:
+            limit = float('inf')
+        neighbors = []
+        total = 0
+        r = TwitterPager(self.api, 'statuses/user_timeline', params={'screen_name': screen_name,
+                                                                     'count': 200})
+        try:
+            for t in r.get_iterator():
+                total += 1  # all tweets are counted. even those who does not give a neighbor
+                original_author = utils.is_comment_retweet(t)
+                if original_author is None:
+                    continue  # not a comment/retweet
+                neighbors.append(original_author)
+                if total >= limit:
+                    break
+            self.writer.write_neighbors(neighbors, screen_name)
+            self.logger.info('neighbors mined successfully')
+        except TwitterRequestError:
+            pass  # error will be logged by TwitterRequestError's constructor
+
     def _update_listen_parameters(self, track, follow, args):
         """
         update the current listen parameters (track and follow) according to the given args
@@ -340,8 +376,7 @@ class Miner:
             job_func(self)
         else:  # standard rest API job
             while True:
-                job_args = self.queues[job_type].get(block=True,
-                                                     timeout=None)
+                job_args = self.queues[job_type].get(block=True, timeout=None)
                 if job_args is STOP_SIGNAL:
                     return
                 # if no job available, get() will block until new job arrives

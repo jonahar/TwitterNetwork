@@ -114,6 +114,18 @@ class Server:
             self.miner.produce_job('likes', args)
             return self.success_response()
 
+        @self.app.route('/mine/neighbors', methods=['POST'])
+        def mine_neighbors():
+            self.logger.info('neighbors request received')
+            args = request.get_json()
+            if not self.check_screen_name(args):
+                return self.miss_arg_response()
+            if 'limit' not in args:
+                # limit was not specified. use default
+                args['limit'] = 0
+            self.miner.produce_job('neighbors', args)
+            return self.success_response()
+
         @self.app.route('/listen', methods=['POST'])
         def listen():
             self.logger.info('listen request received')

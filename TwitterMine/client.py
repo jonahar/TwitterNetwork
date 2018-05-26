@@ -17,7 +17,7 @@ A valid command should be in one of the following formats:
     - listen to keywords <comma,separated,keywords> [stop]
     - server shutdown
 
-* <resource> is one of: 'details', 'friends', 'followers', 'tweets', 'likes'
+* <resource> is one of: 'details', 'friends', 'followers', 'tweets', 'likes', 'neighbors'
 * the 'stop' word at the end of a listen command indicates that the list of values are values to stop listening to
 """
 
@@ -26,7 +26,7 @@ headers = {'content-type': 'application/json'}
 
 # valid commands regex
 mine_command_regex = re.compile(
-    '\s*mine\s+(details|friends|followers|tweets|likes)\s+of\s+\w+(\s+\d*)?\s*')
+    '\s*mine\s+(details|friends|followers|tweets|likes|neighbors)\s+of\s+\w+(\s+\d*)?\s*')
 listen_command_regex = re.compile(
     '\s*listen\s+to\s+((user\s+\d+(,\d+)*)|(keywords?\s+\w+(,\w+)*))(\s+stop)?\s*')
 server_shutdown_command = re.compile('\s*server\s+shutdown\s*')
@@ -130,7 +130,18 @@ def request_likes(screen_name, limit=0):
     return send_request('/mine/likes', data)
 
 
-def request_listen(mode, track=[], follow=[]):
+def request_neighbors(screen_name, limit=0):
+    """
+    :param screen_name:
+    :param limit:
+    :return: True on a successful response
+    """
+    print('sending neighbors req')
+    data = {'screen_name': screen_name, 'limit': limit}
+    return send_request('/mine/neighbors', data)
+
+
+def request_listen(mode, track, follow):
     """
     :param mode: 'add' or 'remove'
     :param track: list of words to track
@@ -180,6 +191,8 @@ def execute_single_command(command):
             ok = request_tweets(screen_name, limit)
         elif resource == 'likes':
             ok = request_likes(screen_name, limit)
+        elif resource == 'neighbors':
+            ok = request_neighbors(screen_name, limit)
 
     elif listen_command_regex.fullmatch(command):
         print('sending request "{0}"... '.format(command), end='')
@@ -213,7 +226,7 @@ def execute_single_command(command):
 
 def execute_commands(stream):
     """
-    :param stream: file-like stream  of commands, separated with newlines
+    :param stream: file-like stream of commands, separated with newlines
     """
     for line in stream:
         line = line[:-1]  # remove newline character
