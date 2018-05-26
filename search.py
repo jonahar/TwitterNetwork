@@ -100,12 +100,28 @@ def user_repr(user):
     return '{0};{1};{2}'.format(user['id'], user['screen_name'], user['name'])
 
 
-def download_users(term, max_tweets, min_retweets=0, min_likes=0):
+def write_lines(lines, filename, append=True):
+    """
+    write strings in the given list to the file specified by filename. adds a newline after each
+    string
+    """
+    mode = 'a+' if append else 'w'
+    with open(filename, mode=mode) as f:
+        for line in lines:
+            f.write(line)
+            f.write('\n')
+
+
+MAX_USERS_LIST = 2000
+
+
+def download_users(term, out_filename, max_tweets, min_retweets=0, min_likes=0):
     """
     download users whose tweets come up in the search of the given term
     (in case of a retweet also download original author)
 
     :param term: the search term
+    :param out_filename: output file to write results to
     :param max_tweets: maximum number of tweets to search (positive integer)
     :param min_retweets: consider only tweets that have at least this amount of retweets
     :param min_likes: consider only tweets that have at least this amount of likes
@@ -120,9 +136,13 @@ def download_users(term, max_tweets, min_retweets=0, min_likes=0):
             users.append(user_repr(t['retweeted_status']['user']))
         elif 'quoted_status' in t:
             users.append(user_repr(t['quoted_status']['user']))
+        if len(users) > MAX_USERS_LIST:
+            write_lines(users, out_filename)
+            users = []
         count += 1
         if count > max_tweets:
             break
+    write_lines(users, out_filename)
     return users
 
 
@@ -132,7 +152,5 @@ MAX_TWEETS = 100000
 
 if __name__ == '__main__':
     term = '(israel OR zionist) (hamas OR gaza OR palestine) (fence OR crimes OR terror)'
-    users = download_users(term, MAX_TWEETS, MIN_RETWEETS, MIN_LIKES)
     out_filename = 'israel-gaza.results'
-    with open(out_filename, mode='a+') as f:
-        f.writelines(users)
+    download_users(term, out_filename, MAX_TWEETS, MIN_RETWEETS, MIN_LIKES)
