@@ -106,13 +106,13 @@ def write_lines(lines, filename, append=True):
     string
     """
     mode = 'a+' if append else 'w'
-    with open(filename, mode=mode) as f:
+    with open(filename, mode=mode, encoding='utf-8') as f:
         for line in lines:
             f.write(line)
             f.write('\n')
 
 
-MAX_USERS_LIST = 2000
+MAX_USERS_LIST = 1000
 
 
 def download_users(term, out_filename, max_tweets, min_retweets=0, min_likes=0):
