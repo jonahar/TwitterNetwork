@@ -6,24 +6,6 @@ miner = test_toolbox.get_miner()
 api = miner.api
 
 
-def is_comment_retweet(t):
-    """
-    :param: t: tweet object (dictionary)
-    :return: if the given tweet is a comment or a retweet of another tweet, return the screen_name
-             of the author of the original tweet. otherwise, return None.
-    """
-    if t['in_reply_to_screen_name'] is not None:
-        # this is a direct comment
-        return t['in_reply_to_screen_name']
-    if 'retweeted_status' in t:
-        # this is a retweet with extra text (modification of the original tweet)
-        return t['retweeted_status']['user']['screen_name']
-    if 'quoted_status' in t:
-        # this is an unmodified retweet
-        return t['quoted_status']['user']['screen_name']
-    return None
-
-
 def search_comment_to_user(author_scr_name):
     """
     generator of tweets wwhich are replies to tweets by the given user
@@ -92,12 +74,14 @@ def print_tweet_short(t):
     print('text:', text)
 
 
-def user_repr(user):
+def user_repr(tweet):
     """
-    :param user: twitter user object (dictionary)
-    :return: "<user_id>;<screen_name>;<name>"
+    a minimal representation of the author of this tweet
+    :param tweet: tweet object
+    :return: "<user_id>;<screen_name>;<name>;<retweet_count>"
     """
-    return '{0};{1};{2}'.format(user['id'], user['screen_name'], user['name'])
+    return '{0};{1};{2};{3}'.format(tweet['user']['id'], tweet['user']['screen_name'],
+                                    tweet['user']['name'], tweet['retweet_count'])
 
 
 def write_lines(lines, filename, append=True):
@@ -125,17 +109,17 @@ def download_users(term, out_filename, max_tweets, min_retweets=0, min_likes=0):
     :param max_tweets: maximum number of tweets to search (positive integer)
     :param min_retweets: consider only tweets that have at least this amount of retweets
     :param min_likes: consider only tweets that have at least this amount of likes
-    :return: list of strings. each string is in the format "<user_id>;<screen_name>;<name>"
+    :return: list of strings. each string is in the format specified in user_repr()
     """
     users = []
     count = 0
     for t in search_tweets(term, min_retweets, min_likes):
-        users.append(user_repr(t['user']))
+        users.append(user_repr(t))
         # also get details of the original tweet author, if exist
         if 'retweeted_status' in t:
-            users.append(user_repr(t['retweeted_status']['user']))
+            users.append(user_repr(t['retweeted_status']))
         elif 'quoted_status' in t:
-            users.append(user_repr(t['quoted_status']['user']))
+            users.append(user_repr(t['quoted_status']))
         if len(users) > MAX_USERS_LIST:
             write_lines(users, out_filename)
             users = []

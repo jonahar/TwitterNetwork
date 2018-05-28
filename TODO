@@ -1,0 +1,3 @@
+when graph is ready, choose users which are not in the graph and try to predict which group they
+are most related to
+(try centered users as well as extreme users, e.g. btselem, )
