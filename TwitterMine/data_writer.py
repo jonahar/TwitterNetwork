@@ -171,7 +171,9 @@ class DataWriter:
         """
         user_dir = self._init_user_dir(screen_name)
         user_neighbors_file = os.path.join(user_dir, 'neighbors')
-        with open(user_neighbors_file, mode='a+', encoding='utf-8') as f:
+        mode = 'w'  # since a neighbor may be counted multiple times, it is important to overwrite
+        # any previous data already in users
+        with open(user_neighbors_file, mode=mode, encoding='utf-8') as f:
             for n in neighbors:
                 f.write(n)
                 f.write('\n')
