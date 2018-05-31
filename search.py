@@ -1,6 +1,5 @@
-import json
-from TwitterMine import test_toolbox
 from TwitterAPI.TwitterPager import TwitterPager
+from TwitterMine import test_toolbox
 
 miner = test_toolbox.get_miner()
 api = miner.api
@@ -109,25 +108,25 @@ def download_users(term, out_filename, max_tweets, min_retweets=0, min_likes=0):
     :param max_tweets: maximum number of tweets to search (positive integer)
     :param min_retweets: consider only tweets that have at least this amount of retweets
     :param min_likes: consider only tweets that have at least this amount of likes
-    :return: list of strings. each string is in the format specified in user_repr()
+    :return: set of strings. each string is in the format specified in user_repr()
     """
-    users = []
+    lines = set()
     count = 0
     for t in search_tweets(term, min_retweets, min_likes):
-        users.append(user_repr(t))
+        lines.add(user_repr(t))
         # also get details of the original tweet author, if exist
         if 'retweeted_status' in t:
-            users.append(user_repr(t['retweeted_status']))
+            lines.add(user_repr(t['retweeted_status']))
         elif 'quoted_status' in t:
-            users.append(user_repr(t['quoted_status']))
-        if len(users) > MAX_USERS_LIST:
-            write_lines(users, out_filename)
-            users = []
+            lines.add(user_repr(t['quoted_status']))
+
+        if len(lines) >= MAX_USERS_LIST:
+            write_lines(lines, out_filename, append=False)  # write each time to see partial results
         count += 1
         if count > max_tweets:
             break
-    write_lines(users, out_filename)
-    return users
+    write_lines(lines, out_filename)
+    return lines
 
 
 MIN_RETWEETS = 200
