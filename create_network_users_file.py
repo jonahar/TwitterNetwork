@@ -1,11 +1,11 @@
-import os
 import json
+import os
 
 # creates a dictionary of identifier:name and name:identifier for every user in the data
-# dir (unique identifier for each user)
+# dir which has both a 'neighbors' file and a 'details' file (unique identifier for each user)
 
 data_dir = '/cs/labs/avivz/jonahar/Twitter/israel_gaza_data_dir'
-network_filename = '/cs/labs/avivz/jonahar/Twitter/israel_gaza_network_users.json'
+network_filename = '/cs/usr/jonahar/israel_gaza_network_users.json'
 
 identifier = 0
 user_to_identifier = dict()
@@ -16,7 +16,7 @@ for scr_name in os.listdir(data_dir):
     if os.path.isdir(sub_dir):
         details_file = os.path.join(sub_dir, 'user_details')
         neighbors_file = os.path.join(sub_dir, 'neighbors')
-        if os.path.isfile(neighbors_file):
+        if os.path.isfile(neighbors_file) and os.path.isfile(details_file):
             user_to_identifier[scr_name] = identifier
             identifier_to_user[identifier] = scr_name
             identifier += 1

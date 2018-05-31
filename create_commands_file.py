@@ -1,7 +1,7 @@
 NEWLINE = '\n'
 
 results_file = '/cs/usr/jonahar/PycharmProjects/TwitterMine/israel-gaza.results.sorted'
-commands_file = '/cs/usr/jonahar/PycharmProjects/TwitterMine/israel-gaza-client-details-commands'
+commands_file = '/cs/usr/jonahar/PycharmProjects/TwitterMine/israel-gaza-client-commands'
 
 with open(results_file) as r, open(commands_file, mode='w') as c:
     for line in r:
