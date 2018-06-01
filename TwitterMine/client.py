@@ -136,7 +136,6 @@ def request_neighbors(screen_name, limit=0):
     :param limit:
     :return: True on a successful response
     """
-    print('sending neighbors req')
     data = {'screen_name': screen_name, 'limit': limit}
     return send_request('/mine/neighbors', data)
 
