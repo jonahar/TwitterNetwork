@@ -1,19 +1,17 @@
 import json
 import os
-from  collections import Counter
+from collections import Counter
 
-data_dir = '/cs/labs/avivz/jonahar/Twitter/israel_gaza_data_dir'
-# network_filename = '/cs/labs/avivz/jonahar/Twitter/israel_gaza_network_users.json'
-# graph_file = '/cs/labs/avivz/jonahar/Twitter/israel_gaza.gexf'
-network_filename = '/cs/usr/jonahar/israel_gaza_network_users.json'
-graph_file = '/cs/usr/jonahar/israel_gaza.gexf'
+data_dir = '/cs/labs/avivz/jonahar/Twitter/israel_palestine_data_dir'
+network_filename = '/cs/usr/jonahar/israel_palestine_network_users.json'
+graph_file = '/cs/usr/jonahar/israel_palestine.gexf'
 
 graph_info_file = '/cs/usr/jonahar/graph_info.json'
 
 with open(network_filename) as f:
     o = json.load(f)
-    user_to_identifier = o['user_to_identifier']
-    identifier_to_user = o['identifier_to_user']
+    user_to_serial = o['user_to_serial']
+    serial_to_user = o['serial_to_user']
 
 print('reading graph info file')
 if os.path.isfile(graph_info_file):
@@ -28,7 +26,7 @@ else:
 
 
 print('filling missing parts in graph info (from data dir)')
-for user_scr_name in user_to_identifier:
+for user_scr_name in user_to_serial:
     if user_scr_name in adjacencies:
         continue  # information about this user already exist
 
@@ -41,7 +39,7 @@ for user_scr_name in user_to_identifier:
     with open(neighbors_file) as nf:
         for line in nf:
             neighbor_scr_name = line[:-1]
-            if neighbor_scr_name == user_scr_name or neighbor_scr_name not in user_to_identifier:
+            if neighbor_scr_name == user_scr_name or neighbor_scr_name not in user_to_serial:
                 # neighbor is the user itself, or neighbor is not in our network
                 continue
             adjacencies[user_scr_name][neighbor_scr_name] += 1
@@ -60,13 +58,25 @@ def write_dot_format():
     graph.write('digraph G {\n')
 
     for user_scr_name in adjacencies:
-        user_id = user_to_identifier[user_scr_name]
+        user_id = user_to_serial[user_scr_name]
         graph.write('{0} [label="{1}"]\n'.format(user_id, user_scr_name))
         for neighbor_scr_name, weight in adjacencies[user_scr_name].items():
-            neighbor_id = user_to_identifier[neighbor_scr_name]
+            neighbor_id = user_to_serial[neighbor_scr_name]
             graph.write('{0} -> {1} [weight="{2}"];\n'.format(user_id, neighbor_id, weight))
     graph.write('}')
     graph.close()
+
+
+def node_size(num_followers):
+    """
+    :return: the size of a node with the given followers count
+    """
+    if num_followers == 0:
+        return 0
+    return num_followers ** 0.261  # found by curve fitting. 0->0, 500k->50, 50M->100
+
+
+label_size_threshold = 15  # minimum node size to display label
 
 
 def write_gexf_format():
@@ -78,20 +88,21 @@ def write_gexf_format():
 """)
     graph.write('<nodes>\n')
     for user_scr_name in adjacencies:
-        node_size = ((max_node_size - 1) * followers_count[user_scr_name]) / max_followers_count + 1
+        id = user_to_serial[user_scr_name]
+        size = node_size(followers_count[user_scr_name])
+        label = '' if size < label_size_threshold else user_scr_name
         graph.write(
-            '<node id="{0}" label="{1}">\n'.format(user_to_identifier[user_scr_name],
-                                                   user_scr_name))
-        graph.write('<viz:size value="{0}"></viz:size>\n'.format(node_size))
+            '<node id="{0}" label="{1}">\n'.format(id, label))
+        graph.write('<viz:size value="{0}"></viz:size>\n'.format(size))
         graph.write('</node>\n')
 
     graph.write('</nodes>\n')
 
     graph.write('<edges>\n')
     for user_scr_name in adjacencies:
-        user_id = user_to_identifier[user_scr_name]
+        user_id = user_to_serial[user_scr_name]
         for neighbor_scr_name, weight in adjacencies[user_scr_name].items():
-            neighbor_id = user_to_identifier[neighbor_scr_name]
+            neighbor_id = user_to_serial[neighbor_scr_name]
             graph.write('<edge source="{0}" target="{1}" weight="{2}"/>\n'.format(user_id,
                                                                                   neighbor_id,
                                                                                   weight))
