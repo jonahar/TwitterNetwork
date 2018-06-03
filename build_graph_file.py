@@ -10,8 +10,8 @@ graph_info_file = '/cs/usr/jonahar/graph_info.json'
 
 with open(network_filename) as f:
     o = json.load(f)
-    user_to_serial = o['user_to_serial']
-    serial_to_user = o['serial_to_user']
+    name_to_serial = o['name_to_serial']
+    serial_to_name = o['serial_to_name']
 
 print('reading graph info file')
 if os.path.isfile(graph_info_file):
@@ -26,7 +26,7 @@ else:
 
 
 print('filling missing parts in graph info (from data dir)')
-for user_scr_name in user_to_serial:
+for user_scr_name in name_to_serial:
     if user_scr_name in adjacencies:
         continue  # information about this user already exist
 
@@ -39,7 +39,7 @@ for user_scr_name in user_to_serial:
     with open(neighbors_file) as nf:
         for line in nf:
             neighbor_scr_name = line[:-1]
-            if neighbor_scr_name == user_scr_name or neighbor_scr_name not in user_to_serial:
+            if neighbor_scr_name == user_scr_name or neighbor_scr_name not in name_to_serial:
                 # neighbor is the user itself, or neighbor is not in our network
                 continue
             adjacencies[user_scr_name][neighbor_scr_name] += 1
@@ -58,10 +58,10 @@ def write_dot_format():
     graph.write('digraph G {\n')
 
     for user_scr_name in adjacencies:
-        user_id = user_to_serial[user_scr_name]
+        user_id = name_to_serial[user_scr_name]
         graph.write('{0} [label="{1}"]\n'.format(user_id, user_scr_name))
         for neighbor_scr_name, weight in adjacencies[user_scr_name].items():
-            neighbor_id = user_to_serial[neighbor_scr_name]
+            neighbor_id = name_to_serial[neighbor_scr_name]
             graph.write('{0} -> {1} [weight="{2}"];\n'.format(user_id, neighbor_id, weight))
     graph.write('}')
     graph.close()
@@ -88,7 +88,7 @@ def write_gexf_format():
 """)
     graph.write('<nodes>\n')
     for user_scr_name in adjacencies:
-        id = user_to_serial[user_scr_name]
+        id = name_to_serial[user_scr_name]
         size = node_size(followers_count[user_scr_name])
         label = '' if size < label_size_threshold else user_scr_name
         graph.write(
@@ -100,9 +100,9 @@ def write_gexf_format():
 
     graph.write('<edges>\n')
     for user_scr_name in adjacencies:
-        user_id = user_to_serial[user_scr_name]
+        user_id = name_to_serial[user_scr_name]
         for neighbor_scr_name, weight in adjacencies[user_scr_name].items():
-            neighbor_id = user_to_serial[neighbor_scr_name]
+            neighbor_id = name_to_serial[neighbor_scr_name]
             graph.write('<edge source="{0}" target="{1}" weight="{2}"/>\n'.format(user_id,
                                                                                   neighbor_id,
                                                                                   weight))
