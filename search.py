@@ -1,8 +1,7 @@
 from TwitterAPI.TwitterPager import TwitterPager
 from TwitterMine import test_toolbox
 
-miner = test_toolbox.get_miner()
-api = miner.api
+api = test_toolbox.get_api()
 
 
 def search_comment_to_user(author_scr_name):
