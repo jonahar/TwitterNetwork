@@ -2,11 +2,12 @@ import logging
 import time
 from queue import Queue
 from threading import Thread
+
+import TwitterMine.utils as utils
 from TwitterAPI.TwitterAPI import TwitterAPI
+from TwitterAPI.TwitterError import TwitterRequestError, TwitterConnectionError
 from TwitterAPI.TwitterPager import TwitterPager
 from TwitterMine.data_writer import DataWriter as DW
-from TwitterAPI.TwitterError import TwitterRequestError, TwitterConnectionError
-import TwitterMine.utils as utils
 
 MAX_IDS_LIST = 100000
 MAX_TWEETS_LIST = 500
@@ -249,7 +250,7 @@ class Miner:
             for t in r.get_iterator():
                 total += 1  # all tweets are counted. even those who does not give a neighbor
                 original_author = utils.is_comment_retweet(t)
-                if original_author is None:
+                if original_author is None or original_author == screen_name:
                     continue  # not a comment/retweet
                 neighbors.append(original_author)
                 if total >= limit:
