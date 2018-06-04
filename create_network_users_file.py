@@ -11,7 +11,7 @@ import os
 # serial numbers take less space than twitter ids and are used in graph representation file
 
 data_dir = '/cs/labs/avivz/jonahar/Twitter/israel_palestine_data_dir'
-network_filename = '/cs/usr/jonahar/israel_palestine_network_users.json'
+network_filename = '/cs/usr/jonahar/network_users.json'
 
 serial = 0
 name_to_serial = dict()

@@ -3,8 +3,8 @@ import os
 from collections import Counter
 
 data_dir = '/cs/labs/avivz/jonahar/Twitter/israel_palestine_data_dir'
-network_filename = '/cs/usr/jonahar/israel_palestine_network_users.json'
-graph_file = '/cs/usr/jonahar/israel_palestine.gexf'
+network_filename = '/cs/usr/jonahar/network_users.json'
+graph_file = '/cs/usr/jonahar/graph_description.gexf'
 
 graph_info_file = '/cs/usr/jonahar/graph_info.json'
 
