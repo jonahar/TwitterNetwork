@@ -36,6 +36,6 @@ for scr_name in os.listdir(data_dir):
 with open(network_filename, mode='w') as out_file:
     json.dump({'name_to_serial': name_to_serial,
                'serial_to_name': serial_to_name,
-               'name_to_id': name_to_id
+               'name_to_id': name_to_id,
                'id_to_name': id_to_name},
               out_file)
