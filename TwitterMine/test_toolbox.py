@@ -1,11 +1,12 @@
-import sys
-import os
-import logging
 import json
-from TwitterMine.server import Server
+import logging
+import os
+import sys
+
 from TwitterAPI.TwitterAPI import TwitterAPI
 from TwitterMine.data_writer import DataWriter as DW
 from TwitterMine.miner import Miner
+from TwitterMine.server import Server
 
 logging.basicConfig(filename='server_dev.log', level=logging.DEBUG,
                     format='%(asctime)s: %(levelname)s: %(filename)s: %(message)s',
@@ -26,38 +27,42 @@ SERVER_CONF_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 CLIENT_CONF_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 '../my_config/client.conf')
 
+with open(SERVER_CONF_FILE) as f:
+    config = json.load(f)
+
+api = TwitterAPI(config['consumer_key'],
+                 config['consumer_secret'],
+                 config['access_token_key'],
+                 config['access_token_secret'])
+
+writer = DW(config['data_dir'])
+
+miner = Miner(config['consumer_key'], config['consumer_secret'],
+              config['access_token_key'], config['access_token_secret'], config['data_dir'])
+
+server = Server(config['consumer_key'], config['consumer_secret'],
+                config['access_token_key'], config['access_token_secret'],
+                config['data_dir'], config['port'])
+
 
 def get_config():
     """
     :return: the dictionary with the different configurations
     """
-    with open(SERVER_CONF_FILE) as f:
-        config = json.load(f)
     return config
 
 
 def get_api():
-    config = get_config()
-    return TwitterAPI(config['consumer_key'],
-                      config['consumer_secret'],
-                      config['access_token_key'],
-                      config['access_token_secret'])
+    return api
 
 
 def get_writer():
-    config = get_config()
-    data_dir = config['data_dir']
-    return DW(data_dir)
+    return writer
 
 
 def get_miner():
-    config = get_config()
-    return Miner(config['consumer_key'], config['consumer_secret'],
-                 config['access_token_key'], config['access_token_secret'], config['data_dir'])
+    return miner
 
 
 def get_server():
-    config = get_config()
-    return Server(config['consumer_key'], config['consumer_secret'],
-                  config['access_token_key'], config['access_token_secret'],
-                  config['data_dir'], config['port'])
+    return server
