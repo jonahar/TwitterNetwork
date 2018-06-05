@@ -30,20 +30,6 @@ CLIENT_CONF_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 with open(SERVER_CONF_FILE) as f:
     config = json.load(f)
 
-api = TwitterAPI(config['consumer_key'],
-                 config['consumer_secret'],
-                 config['access_token_key'],
-                 config['access_token_secret'])
-
-writer = DW(config['data_dir'])
-
-miner = Miner(config['consumer_key'], config['consumer_secret'],
-              config['access_token_key'], config['access_token_secret'], config['data_dir'])
-
-server = Server(config['consumer_key'], config['consumer_secret'],
-                config['access_token_key'], config['access_token_secret'],
-                config['data_dir'], config['port'])
-
 
 def get_config():
     """
@@ -52,17 +38,27 @@ def get_config():
     return config
 
 
-def get_api():
-    return api
+def get_user_api():
+    return TwitterAPI(config['consumer_key'],
+                      config['consumer_secret'],
+                      config['access_token_key'],
+                      config['access_token_secret'])
+
+
+def get_app_api():
+    return TwitterAPI(config['consumer_key'], config['consumer_secret'], auth_type='oAuth2')
 
 
 def get_writer():
-    return writer
+    return DW(config['data_dir'])
 
 
 def get_miner():
-    return miner
+    return Miner(config['consumer_key'], config['consumer_secret'],
+                 config['access_token_key'], config['access_token_secret'], config['data_dir'])
 
 
 def get_server():
-    return server
+    return Server(config['consumer_key'], config['consumer_secret'],
+                  config['access_token_key'], config['access_token_secret'],
+                  config['data_dir'], config['port'])

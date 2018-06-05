@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import sys
+
 from TwitterMine.server import Server
 
 
@@ -34,6 +35,9 @@ def parse_args():
     parser.add_argument('-c', '--conf', metavar='config-file',
                         help='configurations file for the server (default \'server.conf\')',
                         required=False, type=str, default='server.conf')
+    parser.add_argument('-a', '--auth-type', metavar='auth_type', required=False, type=str,
+                        choices=['app', 'user'], default='app',
+                        help='authentication type for twitter api ("app" or "user")')
     return parser.parse_args()
 
 
@@ -43,9 +47,19 @@ if __name__ == '__main__':
     with open(server_conf_file) as f:
         config = json.load(f)
     init_logger(config['log_file'])
-    server = Server(config['consumer_key'], config['consumer_secret'],
-                    config['access_token_key'], config['access_token_secret'],
-                    config['data_dir'], config['port'])
+    consumer_key = config['consumer_key']
+    consumer_secret = config['consumer_secret']
+    access_token_key = None
+    access_token_secret = None
+    data_dir = config['data_dir']
+    port = config['port']
+
+    if args.auth_type == 'user':
+        access_token_key = config['access_token_key']
+        access_token_secret = config['access_token_secret']
+
+    server = Server(consumer_key, consumer_secret, access_token_key, access_token_secret, data_dir,
+                    port)
     logging.getLogger().info('Running REST server')
     try:
         server.run()

@@ -20,8 +20,8 @@ class Server:
         """
         :param consumer_key:
         :param consumer_secret:
-        :param access_token_key:
-        :param access_token_secret:
+        :param access_token_key: may be None (for app authentication)
+        :param access_token_secret: may be None (for app authentication)
         :param data_dir: directory for storing the extracted information
         :param port: the port to listen for incoming requests
         """

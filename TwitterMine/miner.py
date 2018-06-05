@@ -42,18 +42,25 @@ class Miner:
     there is no need to call mine_user_details for users for which we perform other mining jobs.
     """
 
-    def __init__(self, consumer_key, consumer_secret,
-                 access_token_key, access_token_secret, data_dir):
+    def __init__(self, consumer_key, consumer_secret, data_dir,
+                 access_token_key=None, access_token_secret=None):
         """
-        Construct a new Miner for retrieving data from Twitter
+        Construct a new Miner for retrieving data from Twitter.
+
+        if access_token_key or access_token_secret are None, use app authentication with
+        twitter's API
+
         :param consumer_key:
         :param consumer_secret:
+        :param data_dir: main directory to store the data
         :param access_token_key:
         :param access_token_secret:
-        :param data_dir: main directory to store the data
         """
-        self.api = TwitterAPI(consumer_key, consumer_secret,
-                              access_token_key, access_token_secret)
+        if access_token_key is None or access_token_secret is None:
+            self.api = TwitterAPI(consumer_key, consumer_secret, auth_type='oAuth2')
+        else:
+            self.api = TwitterAPI(consumer_key, consumer_secret,
+                                  access_token_key, access_token_secret)
         self.writer = DW(data_dir)
         self.logger = logging.getLogger()
         self.queues = {type: Queue() for type in JOBS_TYPES}
@@ -228,17 +235,22 @@ class Miner:
     def _mine_neighbors(self, args):
         """
         this function mines neighbors of a given user.
-        A is considered a neighbor of B if B commented to A's tweet, or retweeted a tweet by A
-        This method may be good for analyzing connections in a network, other than the following
-        relationship.
+        B is considered a neighbor of A if one of the following holds:
+        * A retweeted a tweet by B
+        * A quoted a tweet by B
+        * A replied to B
 
-        a neighbor may be counted more than once (if this user commented/retweeted multiple
-        times)
+        data is stored for each tweet that indicates some neighbor of the given user.
+        for each such tweet, the following information is stored:
+        neighbor_screen_name;tweet_id;neighborship_type
+
+        neighborship_type is one of the constants RETWEET, QUOTE or REPLY from TwitterMine.utils
 
         :param args: dictionary with keys 'screen_name' and 'limit'
         """
         screen_name = args['screen_name']
         limit = args['limit']
+        self.logger.info('mining neighbors of user {0}'.format(screen_name))
         self._produce_user_details_job(screen_name)
         if limit == 0:
             limit = float('inf')
@@ -248,11 +260,14 @@ class Miner:
                                                                      'count': 200})
         try:
             for t in r.get_iterator():
-                total += 1  # all tweets are counted. even those who does not give a neighbor
-                original_author = utils.is_comment_retweet(t)
-                if original_author is None or original_author == screen_name:
-                    continue  # not a comment/retweet
-                neighbors.append(original_author)
+                total += 1
+                neighbor_scr_name = utils.get_original_author(t)
+                if neighbor_scr_name is not None and neighbor_scr_name != screen_name:
+                    type = utils.get_tweet_type(t)
+                    neighbors.append('{0};{1};{2}'.format(neighbor_scr_name, t['id_str'], type))
+                if len(neighbors) >= MAX_TWEETS_LIST:
+                    self.writer.write_neighbors(neighbors, screen_name)
+                    neighbors = []
                 if total >= limit:
                     break
             self.writer.write_neighbors(neighbors, screen_name)
