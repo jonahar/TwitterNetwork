@@ -1,5 +1,7 @@
 import logging
+
 from flask import Flask, jsonify, request
+
 from TwitterMine.miner import Miner
 
 HTTP_SUCCESS_CODE = 200
@@ -25,8 +27,8 @@ class Server:
         :param data_dir: directory for storing the extracted information
         :param port: the port to listen for incoming requests
         """
-        self.miner = Miner(consumer_key, consumer_secret, access_token_key, access_token_secret,
-                           data_dir)
+        self.miner = Miner(consumer_key, consumer_secret, data_dir, access_token_key,
+                           access_token_secret)
         self.port = port
         self.app = Flask(__name__)
         self.dummy_counter = 0
