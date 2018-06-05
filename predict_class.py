@@ -97,10 +97,9 @@ def predict_story_class(search_query):
         name = t['user']['screen_name']
         if name in name_to_class:
             counter[name_to_class[name]] += 1
-        else:
-            original_author = utils.is_comment_retweet(t)
-            if original_author is not None and original_author in name_to_class:
-                counter[name_to_class[original_author]] += 1
+        original_author = utils.is_comment_retweet(t)
+        if original_author is not None and original_author in name_to_class:
+            counter[name_to_class[original_author]] += 1
         tweet_count += 1
         if tweet_count >= max_story_tweets:
             break
