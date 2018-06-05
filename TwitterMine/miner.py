@@ -392,13 +392,18 @@ class Miner:
             job_func(self)
         else:  # standard rest API job
             while True:
-                job_args = self.queues[job_type].get(block=True, timeout=None)
-                if job_args is STOP_SIGNAL:
-                    return
-                # if no job available, get() will block until new job arrives
-                job_func(self, job_args)
-                self.queues[job_type].task_done()  # this is to indicate that the job was processed.
-                # this is important if anyone wants to wait until all jobs in the queue are done
+                try:
+                    job_args = self.queues[job_type].get(block=True, timeout=None)
+                    if job_args is STOP_SIGNAL:
+                        return
+                    # if no job available, get() will block until new job arrives
+                    job_func(self, job_args)
+                    self.queues[
+                        job_type].task_done()  # this is to indicate that the job was processed.
+                    # this is important if anyone wants to wait until all jobs in the queue are done
+                except Exception as e:
+                    self.logger.error('{0} job failed: {1}'.format(job_type, str(e)))
+                    pass
 
     def produce_job(self, job_type, args):
         """
