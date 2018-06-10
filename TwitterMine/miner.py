@@ -126,7 +126,6 @@ class Miner:
         :param args: dictionary with the screen_name and limit
         :param resource: the resource ('followers/ids' or 'friends/ids')
         :param writer_func: the writer's function to use
-        :return: True on a successful mining. False on error
         """
         screen_name = args['screen_name']
         limit = args['limit']
@@ -136,20 +135,15 @@ class Miner:
         ids = []
         total = 0  # total number of ids we retrieved so far
         r = TwitterPager(self.api, resource, params={'screen_name': screen_name})
-        try:
-            for id in r.get_iterator():
-                ids.append(id)
-                total += 1
-                if len(ids) > MAX_IDS_LIST:
-                    writer_func(self.writer, ids, screen_name)
-                    ids = []
-                if total >= limit:
-                    break
-            writer_func(self.writer, ids, screen_name)
-        except TwitterRequestError:
-            # error will be logged by TwitterRequestError's constructor
-            return False
-        return True
+        for id in r.get_iterator():
+            ids.append(id)
+            total += 1
+            if len(ids) > MAX_IDS_LIST:
+                writer_func(self.writer, ids, screen_name)
+                ids = []
+            if total >= limit:
+                break
+        writer_func(self.writer, ids, screen_name)
 
     def _mine_followers_ids(self, args):
         """
@@ -158,10 +152,14 @@ class Miner:
         :return:
         """
         self.logger.info('mining followers ids for user {0}'.format(args['screen_name']))
-        if not self._mine_friends_followers(args, 'followers/ids', DW.write_followers):
-            self.logger.error('mining followers failed')
-        else:
+
+        try:
+            self._mine_friends_followers(args, 'followers/ids', DW.write_followers)
             self.logger.info('followers mined successfully')
+
+        except TwitterRequestError as e:
+            self.logger.error(
+                'mining followers failed. Status code {0}: {1}'.format(e.status_code, e.msg))
 
     def _mine_friends_ids(self, args):
         """
@@ -170,10 +168,14 @@ class Miner:
         :return:
         """
         self.logger.info('mining friends ids for user {0}'.format(args['screen_name']))
-        if not self._mine_friends_followers(args, 'friends/ids', DW.write_friends):
-            self.logger.error('mining friends failed')
-        else:
+
+        try:
+            self._mine_friends_followers(args, 'friends/ids', DW.write_followers)
             self.logger.info('friends mined successfully')
+
+        except TwitterRequestError as e:
+            self.logger.error(
+                'mining friends failed. Status code {0}: {1}'.format(e.status_code, e.msg))
 
     def _mine_tweets_likes(self, args, resource, writer_func):
         """
@@ -181,7 +183,6 @@ class Miner:
         :param args: dictionary with keys 'screen_name' and 'limit'
         :param resource: 'statuses/user_timeline' or 'favorites/list'
         :param writer_func: the writer's function to use
-        :return: True if mining ended successfully
         """
         screen_name = args['screen_name']
         limit = args['limit']
@@ -193,20 +194,15 @@ class Miner:
         r = TwitterPager(self.api, resource, params={'screen_name': screen_name,
                                                      'count': 200,
                                                      'tweet_mode': 'extended'})
-        try:
-            for t in r.get_iterator():
-                tweets.append(t)
-                total += 1
-                if len(tweets) > MAX_TWEETS_LIST:
-                    writer_func(self.writer, tweets, screen_name)
-                    tweets = []
-                if total >= limit:
-                    break
-            writer_func(self.writer, tweets, screen_name)
-        except TwitterRequestError:
-            # error will be logged by TwitterRequestError's constructor
-            return False
-        return True
+        for t in r.get_iterator():
+            tweets.append(t)
+            total += 1
+            if len(tweets) > MAX_TWEETS_LIST:
+                writer_func(self.writer, tweets, screen_name)
+                tweets = []
+            if total >= limit:
+                break
+        writer_func(self.writer, tweets, screen_name)
 
     def _mine_tweets(self, args):
         """
@@ -214,11 +210,12 @@ class Miner:
         :param args: dictionary with keys 'screen_name' and 'limit'
         :return:
         """
-        self.logger.info('mining tweets of user {0}'.format(args['screen_name']))
-        if not self._mine_tweets_likes(args, 'statuses/user_timeline', DW.write_tweets_of_user):
-            self.logger.error('mining tweets failed')
-        else:
+        try:
+            self._mine_tweets_likes(args, 'statuses/user_timeline', DW.write_tweets_of_user)
             self.logger.info('tweets mined successfully')
+        except TwitterRequestError as e:
+            self.logger.error(
+                'mining tweets failed. Status code {0}: {1}'.format(e.status_code, e.msg))
 
     def _mine_likes(self, args):
         """
@@ -226,11 +223,12 @@ class Miner:
         :param args: dictionary with keys 'screen_name' and 'limit'
         :return:
         """
-        self.logger.info('mining likes of user {0}'.format(args['screen_name']))
-        if not self._mine_tweets_likes(args, 'favorites/list', DW.write_likes):
-            self.logger.error('mining likes failed')
-        else:
+        try:
+            self._mine_tweets_likes(args, 'favorites/list', DW.write_tweets_of_user)
             self.logger.info('likes mined successfully')
+        except TwitterRequestError as e:
+            self.logger.error(
+                'mining likes failed. Status code {0}: {1}'.format(e.status_code, e.msg))
 
     def _mine_neighbors(self, args):
         """
@@ -272,8 +270,9 @@ class Miner:
                     break
             self.writer.write_neighbors(neighbors, screen_name)
             self.logger.info('neighbors mined successfully')
-        except TwitterRequestError:
-            pass  # error will be logged by TwitterRequestError's constructor
+        except TwitterRequestError as e:
+            self.logger.error(
+                'mining neighbors failed. Status code {0}: {1}'.format(e.status_code, e.msg))
 
     def _update_listen_parameters(self, track, follow, args):
         """
