@@ -14,16 +14,17 @@ def calc_neighbors_mining_time(num_users, neighbors_per_user, neighbors_per_requ
     return max(details, neighbors)
 
 
-commands = set()
-with open(results_file) as r:
-    for line in r:
+users = set()
+with open(results_file) as ifs:
+    for line in ifs:
         tokens = line[:-1].split(';')
         scr_name = tokens[1]
-        commands.add('mine neighbors of {0} 2500\n'.format(scr_name))
+        users.add(scr_name)
         original_scr_name = tokens[2]
         if original_scr_name:
-            commands.add('mine neighbors of {0} 2500\n'.format(original_scr_name))
-
+            users.add(original_scr_name)
 with open(commands_file, mode='w') as c:
-    for line in commands:
-        c.write(line)
+    for scr_name in users:
+        c.write('mine likes of {0} 200\n'.format(scr_name))
+
+    c.write('exit\n')
