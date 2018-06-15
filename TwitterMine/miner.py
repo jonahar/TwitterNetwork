@@ -211,6 +211,7 @@ class Miner:
         :return:
         """
         try:
+            self.logger.info('mining tweets of user {0}'.format(args['screen_name']))
             self._mine_tweets_likes(args, 'statuses/user_timeline', DW.write_tweets_of_user)
             self.logger.info('tweets mined successfully')
         except TwitterRequestError as e:
@@ -224,7 +225,8 @@ class Miner:
         :return:
         """
         try:
-            self._mine_tweets_likes(args, 'favorites/list', DW.write_tweets_of_user)
+            self.logger.info('mining likes of user {0}'.format(args['screen_name']))
+            self._mine_tweets_likes(args, 'favorites/list', DW.write_likes)
             self.logger.info('likes mined successfully')
         except TwitterRequestError as e:
             self.logger.error(
