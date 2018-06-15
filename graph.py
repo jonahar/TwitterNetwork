@@ -1,22 +1,44 @@
 import json
 import os
-from collections import Counter
+from functools import reduce
 from math import log
 
+import numpy as np
+from scipy.sparse import lil_matrix
+
+from TwitterAnalysis import properties
 from TwitterMine.utils import RETWEET, QUOTE, REPLY
 
+SERIAL_IDX = 0
+FOLLOWERS_COUNT_IDX = 1
 
-def name_serial_map(data_dir, necessary_files):
+LIKE = 4
+ALL = 5
+adjacency_types = [RETWEET, QUOTE, REPLY, LIKE, ALL]
+assert len(adjacency_types) == len(set(adjacency_types))  # unique value for each
+graphs_names = ['retweet.gexf', 'quote.gexf', 'reply.gexf', 'like.gexf', 'all.gexf']
+
+MAX_NODE_SIZE = 100
+
+
+def network_users(data_dir, necessary_files, network_file):
     """
     find all users in the data_dir that have all the necessary files in their directory. Each such
     user is given a unique identifier (serial)
 
+    if network file exists, read users map from file and return it.
+
     :param data_dir:
     :param necessary_files: list of filenames
-    :return: mapping dictionary from screen name to serial
+    :param network_file:
+    :return: a dictionary mapping  screen name to tuple (serial, followers_count)
     """
+    if os.path.isfile(network_filename):
+        with open(network_filename) as nf:
+            map = json.load(nf)
+        return map
     serial = 0
-    name_to_serial = dict()
+    map = dict()
     for scr_name in os.listdir(data_dir):
         user_dir = os.path.join(data_dir, scr_name)
         if os.path.isdir(user_dir):
@@ -27,94 +49,112 @@ def name_serial_map(data_dir, necessary_files):
                     valid_user = False
                     break
             if valid_user:
-                name_to_serial[scr_name] = serial
+                details_file = os.path.join(user_dir, 'user_details')
+                with open(details_file) as df:
+                    followers_count = json.load(df)['followers_count']
+                map[scr_name] = (serial, followers_count)
                 serial += 1
-    return name_to_serial
+    with open(network_file, mode='w') as net:
+        json.dump(map, net, indent=4)
+    return map
 
 
-LIKE = 4
-assert LIKE not in [RETWEET, QUOTE, REPLY]
-
-
-def graph_info(data_dir):
+def adjacencies_matrices(users_map, data_dir, matrices_file):
     """
-    creates a graph-info object, which is a dictionary with keys 'neighborship' and 'followers_count'
+    Build all kinds of neighborship matrices (a total of 5).
+    For any matrix A, A[i,j] is the directed edge from i to j.
+
+    If matrices_file exists, read matrices from file and return them
+
+    :param users_map:
     :param data_dir:
+    :return: dictionary with keys RETWEET, QUOTE, REPLY, LIKE, ALL. Values are sparse matrices that
+             correspond to the relevant neighborship type
     """
-    neighborship = dict()
-    followers_count = dict()
+    if os.path.isfile(matrices_file):
+        data = np.load(matrices_file)
+        matrices = {RETWEET: data['retweet'],
+                    QUOTE: data['quote'],
+                    REPLY: data['reply'],
+                    LIKE: data['like'],
+                    ALL: data['all']}
+        return matrices
+    N = len(users_map)
+    if log(N, 2) < 8:
+        dtype = np.uint8
+    elif log(N, 2) < 16:
+        dtype = np.uint16
+    else:
+        dtype = np.uint32
+    print('initializing matrices. dtype=', dtype, sep='')
+    matrices = {RETWEET: lil_matrix((N, N), dtype=dtype),
+                QUOTE: lil_matrix((N, N), dtype=dtype),
+                REPLY: lil_matrix((N, N), dtype=dtype),
+                LIKE: lil_matrix((N, N), dtype=dtype)}
+    for user_name in users_map:
+        neighbors_file = os.path.join(data_dir, user_name, 'neighbors')
+        likes_file = os.path.join(data_dir, user_name, 'likes')
+        i = users_map[user_name][SERIAL_IDX]
+        # RETWEET, QUOTE and REPLY matrices
+        if os.path.isfile(neighbors_file):
+            with open(neighbors_file) as nf:
+                for line in nf:
+                    tokens = line[:-1].split(';')
+                    neighbor_name = tokens[0]
+                    neighborship_type = int(tokens[2])
+                    if neighbor_name in users_map:
+                        # the neighbor belongs to our network
+                        j = users_map[neighbor_name][SERIAL_IDX]
+                        matrices[neighborship_type][i, j] += 1
+        # LIKE matrix
+        if os.path.isfile(likes_file):
+            with open(likes_file) as lf:
+                for line in lf:
+                    tweet = json.loads(line)
+                    neighbor_name = tweet['user']['screen_name']
+                    if neighbor_name in users_map:
+                        # the neighbor belongs to our network
+                        j = users_map[neighbor_name][SERIAL_IDX]
+                        matrices[LIKE][i, j] += 1
+    # add all matrices
+    all = reduce(lil_matrix.__add__, matrices.values())
+    matrices[ALL] = all
+    np.savez(matrices_file, retweet=matrices[RETWEET], quote=matrices[QUOTE], reply=matrices[REPLY],
+             like=matrices[LIKE], all=matrices[ALL])
+    return matrices
 
-    for user_scr_name in name_to_serial:
-        details_file = os.path.join(data_dir, user_scr_name, 'user_details')
-        neighbors_file = os.path.join(data_dir, user_scr_name, 'neighbors')
-        likes_file = os.path.join(data_dir, user_scr_name, 'likes')
 
-        with open(details_file) as df:
-            followers_count[user_scr_name] = json.load(df)['followers_count']
-
-        neighborship[user_scr_name][RETWEET] = Counter()
-        neighborship[user_scr_name][QUOTE] = Counter()
-        neighborship[user_scr_name][REPLY] = Counter()
-        neighborship[user_scr_name][LIKE] = Counter()
-
-        with open(neighbors_file) as nf:
-            for line in nf:
-                tokens = line[:-1].split(';')
-                neighbor_scr_name = tokens[0]
-                neighborship_type = tokens[2]
-                if neighbor_scr_name in name_to_serial:
-                    # the neighbor belongs to our network
-                    neighborship[user_scr_name][neighborship_type][neighbor_scr_name] += 1
-
-        with open(likes_file) as lf:
-            for line in lf:
-                tweet = json.loads(line)
-                neighbor_scr_name = tweet['user']['screen_name']
-                if neighbor_scr_name in name_to_serial:
-                    # the neighbor belongs to our network
-                    neighborship[user_scr_name][LIKE][neighbor_scr_name] += 1
-
-    return {'neighborship': neighborship, 'followers_count': followers_count}
-
-
-def write_gexf_format(graph_file, neighborship, name_to_serial, node_size=lambda x: 1,
+def write_gexf_format(graph_file, adjacency, users_map, node_size=lambda x: 1,
                       label_size_threshold=-1):
     """
     writes a graph file in gexf format
 
     :param graph_file: output file
-    :param neighborship: dictionary. neighborship[i] has multiples dictionaries, one for each
-                         neighborship type. neighborship[i][type] is a dictionary whose keys are
-                         screen names of neighbors (of that type) and the value is the weight
-                         of the neighborship
-    :param name_to_serial: dictionary, mapping screen names to serial numbers
+    :param adjacency: sparse numpy matrix
+    :param users_map: dictionary, mapping screen_name to (serial, followers_count)
     :param node_size: function that takes a screen name and returns the size of this user's node.
     :param label_size_threshold: write label only to nodes whose size is at least this threshold
+    :return:
     """
     graph = open(graph_file, mode='w')
     graph.write("""<?xml version="1.0" encoding="UTF-8"?>
-<gexf xmlns="http://www.gexf.net/1.2draft" version="1.2" xmlns:viz="http://www.gexf.net/1.3/viz">
-<graph mode="static" defaultedgetype="directed">
-""")
+    <gexf xmlns="http://www.gexf.net/1.2draft" version="1.2" xmlns:viz="http://www.gexf.net/1.3/viz">
+    <graph mode="static" defaultedgetype="directed">
+    """)
     graph.write('<nodes>\n')
-    for user_scr_name in neighborship:
-        id = name_to_serial[user_scr_name]
-        size = node_size(user_scr_name)
-        label = '' if size < label_size_threshold else user_scr_name
+    for user_name in users_map:
+        id = users_map[user_name][SERIAL_IDX]
+        size = node_size(user_name)
+        label = '' if size < label_size_threshold else user_name
         graph.write('<node id="{0}" label="{1}">\n'.format(id, label))
         graph.write('<viz:size value="{0}"></viz:size>\n'.format(size))
         graph.write('</node>\n')
-
     graph.write('</nodes>\n')
-
     graph.write('<edges>\n')
-    for user_scr_name in neighborship:
-        user_id = name_to_serial[user_scr_name]
-        for neighbor_scr_name, weight in neighborship[user_scr_name].items():
-            neighbor_id = name_to_serial[neighbor_scr_name]
-            graph.write('<edge source="{0}" target="{1}" weight="{2}"/>\n'.format(user_id,
-                                                                                  neighbor_id,
-                                                                                  weight))
+    # iterate over all non-zero elements in the adjacency matrix
+    for i, j in zip(*adjacency.nonzero()):
+        graph.write('<edge source="{0}" target="{1}" weight="{2}"/>\n'.format(i, j,
+                                                                              adjacency[i, j]))
     graph.write('</edges>\n')
     graph.write('</graph>\n')
     graph.write('</gexf>\n')
@@ -122,26 +162,25 @@ def write_gexf_format(graph_file, neighborship, name_to_serial, node_size=lambda
 
 
 if __name__ == '__main__':
-    data_dir = '/cs/labs/avivz/jonahar/Twitter/cryptocurrency_data_dir'
-    network_filename = '/cs/usr/jonahar/network_users.json'
-    necessary_files = ['user_details', 'neighbors', 'likes']
-    graph_info_file = '/cs/usr/jonahar/graph_info.json'
-    graph_file = '/cs/usr/jonahar/graph.gexf'
+    data_dir = properties.data_dir
+    network_filename = properties.network_filename
+    necessary_files = properties.necessary_files
+    matrices_file = properties.matrices_file
+    graph_dir = properties.graph_dir
 
-    # create name -> serial map
-    name_to_serial = name_serial_map(data_dir, necessary_files)
+    print('creating users map')
+    users_map = network_users(data_dir, necessary_files, network_filename)
+    most_followed = max(users_map, key=lambda k: users_map[k][FOLLOWERS_COUNT_IDX])
+    max_followers_count = users_map[most_followed][FOLLOWERS_COUNT_IDX]
 
-    # save mapping to file
-    with open(network_filename, mode='w') as net:
-        json.dump(name_to_serial, net, indent=4)
-
-    # create graph-info object
-    graph_info = graph_info(data_dir)
-
-    # write graph-info object
-    with open(graph_info_file, mode='w') as gii:
-        json.dump(graph_info, gii, indent=4)
+    print('creating adjacencies matrices')
+    matrices = adjacencies_matrices(users_map, data_dir, matrices_file)
 
     # create graph file
-    node_size_func = lambda screen_name: log(graph_info['followers_count'][screen_name] + 1)
-    write_gexf_format(graph_file, graph_info['neighborship'], name_to_serial, node_size_func, 0)
+    base = max_followers_count ** (1 / MAX_NODE_SIZE)
+    node_size_func = lambda screen_name: log(users_map[screen_name][FOLLOWERS_COUNT_IDX] + 1, base)
+
+    print('writing graph files')
+    for key, name in zip(adjacency_types, graphs_names):
+        graph_file = os.path.join(graph_dir, name)
+        write_gexf_format(graph_file, matrices[key], users_map, node_size_func, 0)

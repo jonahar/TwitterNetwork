@@ -1,5 +1,7 @@
-results_file = '/cs/usr/jonahar/PycharmProjects/TwitterMine/cryptocurrency-search-results'
-commands_file = '/cs/usr/jonahar/PycharmProjects/TwitterMine/cryptocurrency-client-commands'
+from TwitterAnalysis import properties
+
+results_file = properties.results_file
+commands_file = properties.commands_file
 
 
 def calc_neighbors_mining_time(num_users, neighbors_per_user, neighbors_per_request,
@@ -26,5 +28,6 @@ with open(results_file) as ifs:
 with open(commands_file, mode='w') as c:
     for scr_name in users:
         c.write('mine likes of {0} 200\n'.format(scr_name))
+        c.write('mine neighbors of {0} 2500\n'.format(scr_name))
 
     c.write('exit\n')
