@@ -40,7 +40,7 @@ public class CreateGraphs
             {
                 Workspace workspace = pc.newWorkspace(pc.getCurrentProject());
                 pc.renameWorkspace(workspace, graphNames[i]);
-                script(graphFilepaths[i], workspace, 500);
+                script(graphFilepaths[i], workspace, 400);
             }
             saveProject(pc, "graphs.gephi");
 
@@ -126,7 +126,7 @@ public class CreateGraphs
         {
             if ((i + 1) % 100 == 0)
             {
-                System.out.print(i);
+                System.out.print(i + 1);
                 System.out.println(" iterations done");
             }
             fa2.goAlgo();
