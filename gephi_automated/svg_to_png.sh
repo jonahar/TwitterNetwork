@@ -13,4 +13,4 @@ if [ -z $dpi ]; then
     dpi="100"
 fi
 
-inkscape --export-png="$out" --export-dpi=$dpi --without-gui --export-background=black "$1"
+inkscape --export-png="$out" --export-dpi=$dpi --without-gui --export-background=black "$in"
