@@ -25,7 +25,7 @@ def def_node_size(screen_name):
     return 1
 
 
-def def_node_color():
+def def_node_color(screen_name):
     return "000000"
 
 
@@ -81,11 +81,12 @@ def adjacencies_matrices(users_map, data_dir, matrices_file):
     """
     if os.path.isfile(matrices_file):
         data = np.load(matrices_file)
-        matrices = {RETWEET: data['retweet'],
-                    QUOTE: data['quote'],
-                    REPLY: data['reply'],
-                    LIKE: data['like'],
-                    ALL: data['all']}
+        # numpy loads sparse matrices with 0 dimensoins. the weird [()] fixes this
+        matrices = {RETWEET: data['retweet'][()],
+                    QUOTE: data['quote'][()],
+                    REPLY: data['reply'][()],
+                    LIKE: data['like'][()],
+                    ALL: data['all'][()]}
         return matrices
     N = len(users_map)
     if log(N, 2) < 8:
@@ -194,10 +195,10 @@ if __name__ == '__main__':
     matrices = adjacencies_matrices(users_map, data_dir, matrices_file)
 
     # create graph file
-    base = max_followers_count ** (1 / MAX_NODE_SIZE)
-    node_size_func = lambda screen_name: log(users_map[screen_name][FOLLOWERS_COUNT_IDX] + 1, base)
+    node_size_func = def_node_size
+    node_color_func = def_node_color
 
     print('writing graph files')
     for key, name in zip(adjacency_types, graphs_names):
         graph_file = os.path.join(graph_dir, name)
-        write_gexf_format(graph_file, matrices[key], users_map, node_size_func, 0)
+        write_gexf_format(graph_file, matrices[key], users_map, node_size_func, node_color_func)
