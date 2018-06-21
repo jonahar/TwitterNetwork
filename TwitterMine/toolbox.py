@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import sys
 
 from TwitterAPI.TwitterAPI import TwitterAPI
@@ -21,24 +20,31 @@ logging.getLogger('requests_oauthlib').setLevel(logging.WARNING)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
-# TODO change this variable to point to your config file
-SERVER_CONF_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                '../my_config/server.conf')
-CLIENT_CONF_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                '../my_config/client.conf')
+SERVER_CONF_FILE = None
 
-with open(SERVER_CONF_FILE) as f:
-    config = json.load(f)
+
+def init(server_conf: str):
+    """
+    :param server_conf: server config file.
+    :return:
+    """
+    global SERVER_CONF_FILE
+    SERVER_CONF_FILE = server_conf
 
 
 def get_config():
     """
     :return: the dictionary with the different configurations
     """
+    if SERVER_CONF_FILE is None:
+        raise ValueError('Must call toolbox.init before using the toolbox')
+    with open(SERVER_CONF_FILE) as f:
+        config = json.load(f)
     return config
 
 
 def get_user_api():
+    config = get_config()
     return TwitterAPI(config['consumer_key'],
                       config['consumer_secret'],
                       config['access_token_key'],
@@ -46,19 +52,23 @@ def get_user_api():
 
 
 def get_app_api():
+    config = get_config()
     return TwitterAPI(config['consumer_key'], config['consumer_secret'], auth_type='oAuth2')
 
 
 def get_writer():
+    config = get_config()
     return DW(config['data_dir'])
 
 
 def get_miner():
+    config = get_config()
     return Miner(config['consumer_key'], config['consumer_secret'],
                  config['access_token_key'], config['access_token_secret'], config['data_dir'])
 
 
 def get_server():
+    config = get_config()
     return Server(config['consumer_key'], config['consumer_secret'],
                   config['access_token_key'], config['access_token_secret'],
                   config['data_dir'], config['port'])

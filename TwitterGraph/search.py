@@ -3,10 +3,10 @@ import sys
 
 from TwitterAPI.TwitterPager import TwitterPager
 
-from TwitterMine import test_toolbox
+from TwitterMine import toolbox
 from TwitterMine import utils
 
-api = test_toolbox.get_app_api()
+api = toolbox.get_app_api()
 
 
 def get_tweet(tweet_id):
