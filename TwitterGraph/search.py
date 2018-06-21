@@ -1,4 +1,8 @@
+import json
+import sys
+
 from TwitterAPI.TwitterPager import TwitterPager
+
 from TwitterMine import test_toolbox
 from TwitterMine import utils
 
@@ -103,14 +107,14 @@ def write_lines(lines, filename, append=True):
 MAX_USERS_LIST = 1000
 
 
-def download_users(search_query, out_filename, max_tweets, terms=(), min_retweets=0, min_likes=0):
+def download_users(search_query, results_file, max_tweets, terms=(), min_retweets=0, min_likes=0):
     """
     download users whose tweets come up in the search of the given term
     (in case of a retweet also download original author).
     For each result, write a line to the output file, in the format specified in result_repr()
 
     :param search_query: the search term
-    :param out_filename: output file to write results to
+    :param results_file: output file to write results to
     :param max_tweets: maximum number of tweets to search (positive integer)
     :param terms: list of terms to look for in a result tweet (only affects the results
                   representation, but not the results themselves)
@@ -125,11 +129,11 @@ def download_users(search_query, out_filename, max_tweets, terms=(), min_retweet
         lines.append(result_repr(t, terms))
         if len(lines) >= MAX_USERS_LIST:
             print('covered', count, 'results')
-            write_lines(lines, out_filename, append=True)
+            write_lines(lines, results_file, append=True)
             lines = []
         if count >= max_tweets:
             break
-    write_lines(lines, out_filename)
+    write_lines(lines, results_file)
 
 
 MIN_RETWEETS = 100
@@ -137,8 +141,14 @@ MIN_LIKES = 100
 MAX_TWEETS = 100000
 
 if __name__ == '__main__':
-    terms = ['blockchain', 'cryptocurrency', 'bitcoin', 'ethereum', 'ripple', 'bitcoin cash',
-             'eos', 'litecoin', 'cardano', 'monero', 'zcash', 'iota']
+    if len(sys.argv) != 2:
+        print('usage: search <graph_properties> comma,separated,search,terms')
+
+    graph_properties = sys.argv[1]
+    with open(graph_properties) as f:
+        d = json.load(f)
+        results_file = d['results_file']
+
+    terms = sys.argv[2].split(',')
     search_query = ' OR '.join(terms)
-    out_filename = 'cryptocurrency-search-results'
-    download_users(search_query, out_filename, MAX_TWEETS, terms, MIN_RETWEETS, MIN_LIKES)
+    download_users(search_query, results_file, MAX_TWEETS, terms, MIN_RETWEETS, MIN_LIKES)

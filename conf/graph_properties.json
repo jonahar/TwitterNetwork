@@ -1,0 +1,11 @@
+{
+    "results_file": "/path/to/search-results",
+    "commands_file": "/path/to/client-commands",
+    "matrices_file": "/path/to/matrices.npz",
+    "data_dir": "/path/to/data_dir",
+    "network_filename": "/path/to/network_users.json",
+    "necessary_files": [
+        "user_details"
+    ],
+    "graph_dir": "/path/to/graph-files-dir"
+}

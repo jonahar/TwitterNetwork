@@ -1,12 +1,12 @@
 import json
 import os
+import sys
 from functools import reduce
 from math import log
 
 import numpy as np
 from scipy.sparse import lil_matrix
 
-from TwitterAnalysis import properties
 from TwitterMine.utils import RETWEET, QUOTE, REPLY
 
 SERIAL_IDX = 0
@@ -19,6 +19,14 @@ assert len(adjacency_types) == len(set(adjacency_types))  # unique value for eac
 graphs_names = ['retweet.gexf', 'quote.gexf', 'reply.gexf', 'like.gexf', 'all.gexf']
 
 MAX_NODE_SIZE = 100
+
+
+def def_node_size(screen_name):
+    return 1
+
+
+def def_node_color():
+    return "000000"
 
 
 def network_users(data_dir, necessary_files, network_file):
@@ -124,8 +132,8 @@ def adjacencies_matrices(users_map, data_dir, matrices_file):
     return matrices
 
 
-def write_gexf_format(graph_file, adjacency, users_map, node_size=lambda x: 1,
-                      label_size_threshold=-1):
+def write_gexf_format(graph_file, adjacency, users_map, node_size=def_node_size,
+                      node_color=def_node_color, label_size_threshold=-1):
     """
     writes a graph file in gexf format
 
@@ -133,6 +141,7 @@ def write_gexf_format(graph_file, adjacency, users_map, node_size=lambda x: 1,
     :param adjacency: sparse numpy matrix
     :param users_map: dictionary, mapping screen_name to (serial, followers_count)
     :param node_size: function that takes a screen name and returns the size of this user's node.
+    :param node_color: function that takes a screen name and returns the color of this user's node
     :param label_size_threshold: write label only to nodes whose size is at least this threshold
     :return:
     """
@@ -145,9 +154,11 @@ def write_gexf_format(graph_file, adjacency, users_map, node_size=lambda x: 1,
     for user_name in users_map:
         id = users_map[user_name][SERIAL_IDX]
         size = node_size(user_name)
+        color = node_color(user_name)
         label = '' if size < label_size_threshold else user_name
         graph.write('<node id="{0}" label="{1}">\n'.format(id, label))
         graph.write('<viz:size value="{0}"></viz:size>\n'.format(size))
+        graph.write('<viz:color hex="{0}" a="1"/>'.format(color))
         graph.write('</node>\n')
     graph.write('</nodes>\n')
     graph.write('<edges>\n')
@@ -162,11 +173,17 @@ def write_gexf_format(graph_file, adjacency, users_map, node_size=lambda x: 1,
 
 
 if __name__ == '__main__':
-    data_dir = properties.data_dir
-    network_filename = properties.network_filename
-    necessary_files = properties.necessary_files
-    matrices_file = properties.matrices_file
-    graph_dir = properties.graph_dir
+    if len(sys.argv) != 2:
+        print('usage: graph <graph_properties>')
+
+    graph_properties = sys.argv[1]
+    with open(graph_properties) as f:
+        d = json.load(f)
+        data_dir = d['data_dir']
+        network_filename = d['network_filename']
+        necessary_files = d['necessary_files']
+        matrices_file = d['matrices_file']
+        graph_dir = d['graph_dir']
 
     print('creating users map')
     users_map = network_users(data_dir, necessary_files, network_filename)
