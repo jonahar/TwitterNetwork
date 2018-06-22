@@ -140,7 +140,7 @@ def request_neighbors(screen_name, limit=0):
     return send_request('/mine/neighbors', data)
 
 
-def request_listen(mode, track, follow):
+def request_listen(mode, track=[], follow=[]):
     """
     :param mode: 'add' or 'remove'
     :param track: list of words to track

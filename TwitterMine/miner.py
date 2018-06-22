@@ -373,7 +373,12 @@ class Miner:
             except TwitterRequestError as e:
                 if e.status_code < 500:
                     # something needs to be fixed before re-connecting
-                    raise
+                    # print information and start a new empty listen job
+                    self.logger.error(
+                        'Got exception during listen job: {0}. Starting an empty listen job'.
+                            format(e))
+                    track = set()
+                    follow = set()
                 else:
                     # temporary interruption, re-try request
                     pass

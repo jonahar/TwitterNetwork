@@ -41,9 +41,13 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == '__main__':
-    args = parse_args()
-    server_conf_file = args.conf
+def start(server_conf_file, auth_type):
+    """
+    read the configurations for the server and start it.
+    :param server_conf_file: path to config file
+    :param auth_type: Twitter auth type: 'app' or 'user'
+    :return:
+    """
     with open(server_conf_file) as f:
         config = json.load(f)
     init_logger(config['log_file'])
@@ -54,10 +58,9 @@ if __name__ == '__main__':
     data_dir = config['data_dir']
     port = config['port']
 
-    if args.auth_type == 'user':
+    if auth_type == 'user':
         access_token_key = config['access_token_key']
         access_token_secret = config['access_token_secret']
-
     server = Server(consumer_key, consumer_secret, access_token_key, access_token_secret, data_dir,
                     port)
     logging.getLogger().info('Running REST server')
@@ -65,3 +68,8 @@ if __name__ == '__main__':
         server.run()
     except Exception as e:
         logging.critical(str(e))
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    start(args.conf, args.auth_type)
