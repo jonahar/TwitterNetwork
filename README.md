@@ -1,8 +1,10 @@
 **TwitterNetwork** was created for representing and analyzing networks in Twitter. It consists of tools for 
 mining data from Twitter and generating graphs out of the data (which can be visualized using 
 external tools such as gephi).  
-Its 2 main parts are TwitterMine and TwitterGraph.
-
+Its 2 main parts are TwitterMine and TwitterGraph.  
+  
+TwitterNetwork depends on a forked version of TwitterAPI, so be sure to get the correct version which
+exists here as a submodule. The most easy way to set things up is to download the release tarball from the [Releases](https://github.com/jonahar/TwitterNetwork/releases) page.
 
 
 ## TwitterMine
@@ -15,12 +17,6 @@ TwitterMine provides a service that can run in the background
 desired information, under the API limits. It also consist of a 
 client through which requests can be easily forwarded to the 
 daemon to handle.
-
-
-TwitterMine depends on a forked version of TwitterAPI, so be sure to get the correct version which
-is linked here as a sub-module (installing TwitterAPI via pip for example will not be compatible).  
-The most easy way to set things up is to download the release tarball from the [Releases](https://github.com/jonahar/TwitterMine/releases) page, and run TwitterMine
-modules from the top directory using python's `-m` flag.
 
 
 #### Daemon
