@@ -175,7 +175,7 @@ def write_gexf_format(graph_file, adjacency, users_map, node_size=def_node_size,
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print('usage: graph <graph_properties>')
+        print('usage: graph <graph-properties-file>')
 
     graph_properties = sys.argv[1]
     with open(graph_properties) as f:

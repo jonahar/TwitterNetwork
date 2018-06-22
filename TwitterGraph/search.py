@@ -142,7 +142,7 @@ MAX_TWEETS = 100000
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print('usage: search <graph_properties> comma,separated,search,terms')
+        print('usage: search <graph-properties-file> comma,separated,search,terms')
 
     graph_properties = sys.argv[1]
     with open(graph_properties) as f:
