@@ -6,8 +6,6 @@ from TwitterAPI.TwitterPager import TwitterPager
 from TwitterMine import toolbox
 from TwitterMine import utils
 
-api = toolbox.get_app_api()
-
 
 def get_tweet(tweet_id):
     r = api.request('statuses/lookup', params={'id': tweet_id})
@@ -141,13 +139,17 @@ MIN_LIKES = 100
 MAX_TWEETS = 100000
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 3:
         print('usage: search <graph-properties-file> comma,separated,search,terms')
+        exit()
 
     graph_properties = sys.argv[1]
     with open(graph_properties) as f:
         d = json.load(f)
         results_file = d['results_file']
+        server_conf = d['server_conf']
+    toolbox.init(server_conf)
+    api = toolbox.get_app_api()
 
     terms = sys.argv[2].split(',')
     search_query = ' OR '.join(terms)

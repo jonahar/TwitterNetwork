@@ -7,5 +7,6 @@
   "necessary_files": [
     "user_details"
   ],
-  "graph_dir": "/path/to/graph-files-dir"
+  "graph_dir": "/path/to/graph-files-dir",
+  "server_conf": "path/to/server.conf"
 }
