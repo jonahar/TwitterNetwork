@@ -52,20 +52,27 @@ necessary scripts that, when combined together, can create a complete and final 
 
 
 A typical workflow may be:
+
 1. Filling all field in the `graph_properties.json` file
-2. Start TwitterMine daemon
 
-`python3 -m TwitterMine.daemon [OPTIONS]`
-
-3. run search, create relevant client commands and send them to the daemon  
+2. run search and create relevant client commands  
 
 ```
 python3 -m TwitterGraph.search <graph-properties-file> comma,separated,search,terms
 python3 -m TwitterGraph.create_commands_file <graph-properties-file>
+```
+
+3. start daemon and send all commands using the client
+
+```
+python3 -m TwitterMine.daemon [OPTIONS]
+```
+```
 python3 -m TwitterMine.client -s <client-commands-file> -c <client-config-file>
 ```
 
 4. When daemon finished downloading all required data, build the graph files
 
-`python3 -m TwitterNetwork.TwitterGraph.graph <graph-properties-file>`
+`python3 -m TwitterGraph.graph <graph-properties-file>`
+
 
