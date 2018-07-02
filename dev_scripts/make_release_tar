@@ -1,0 +1,16 @@
+#!/bin/bash
+# create a release tarball
+#
+# usage "make_release_tar <version>"
+# e.g. "make_release_tar 0.1"
+
+
+version="$1"
+if [[ -z "$version" ]] ; then
+    version="0.0.0"
+fi
+
+tar_name="TwitterNetwork-v${version}.tar.gz"
+
+
+tar -czvf "$tar_name" TwitterAPI/*.py TwitterMine/*.py conf/* TwitterGraph/*.py TwitterGraph/gephi_automated/* clustering/*.py
