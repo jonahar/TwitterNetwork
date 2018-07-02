@@ -26,7 +26,11 @@ def def_node_size(screen_name):
 
 
 def def_node_color(screen_name):
-    return "000000"
+    return 0, 0, 0
+
+
+def def_node_label(screen_name):
+    return screen_name
 
 
 def network_users(data_dir, necessary_files, network_file):
@@ -41,8 +45,8 @@ def network_users(data_dir, necessary_files, network_file):
     :param network_file:
     :return: a dictionary mapping  screen name to tuple (serial, followers_count)
     """
-    if os.path.isfile(network_filename):
-        with open(network_filename) as nf:
+    if os.path.isfile(network_file):
+        with open(network_file) as nf:
             map = json.load(nf)
         return map
     serial = 0
@@ -134,32 +138,34 @@ def adjacencies_matrices(users_map, data_dir, matrices_file):
 
 
 def write_gexf_format(graph_file, adjacency, users_map, node_size=def_node_size,
-                      node_color=def_node_color, label_size_threshold=-1):
+                      node_color=def_node_color, node_label=def_node_label,
+                      label_size_threshold=-1):
     """
     writes a graph file in gexf format
-
     :param graph_file: output file
     :param adjacency: sparse numpy matrix
     :param users_map: dictionary, mapping screen_name to (serial, followers_count)
     :param node_size: function that takes a screen name and returns the size of this user's node.
-    :param node_color: function that takes a screen name and returns the color of this user's node
+    :param node_color: function that takes a screen name and returns the color of this user's node.
+                       color is a string with 6 letters, representing RGB color in hex format
+    :param node_label: function that takes a screen name and returns the label for this node
     :param label_size_threshold: write label only to nodes whose size is at least this threshold
     :return:
     """
     graph = open(graph_file, mode='w')
     graph.write("""<?xml version="1.0" encoding="UTF-8"?>
-    <gexf xmlns="http://www.gexf.net/1.2draft" version="1.2" xmlns:viz="http://www.gexf.net/1.3/viz">
+    <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.1draft/viz" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gexf.net/1.2draft http://www.gexf.net/1.2draft/gexf.xsd" version="1.2">
     <graph mode="static" defaultedgetype="directed">
     """)
     graph.write('<nodes>\n')
     for user_name in users_map:
         id = users_map[user_name][SERIAL_IDX]
         size = node_size(user_name)
-        color = node_color(user_name)
-        label = '' if size < label_size_threshold else user_name
+        r, g, b = node_color(user_name)
+        label = '' if size < label_size_threshold else node_label(user_name)
         graph.write('<node id="{0}" label="{1}">\n'.format(id, label))
         graph.write('<viz:size value="{0}"></viz:size>\n'.format(size))
-        graph.write('<viz:color hex="{0}" a="1"/>'.format(color))
+        graph.write('<viz:color r="{0}" g="{1}" b="{2}" a="1"/>'.format(r, g, b))
         graph.write('</node>\n')
     graph.write('</nodes>\n')
     graph.write('<edges>\n')
@@ -173,9 +179,14 @@ def write_gexf_format(graph_file, adjacency, users_map, node_size=def_node_size,
     graph.close()
 
 
+"""
+This script reads the data dir, creates 5 adjacencies matrices and writes 5 gexf files. 
+"""
 if __name__ == '__main__':
+
     if len(sys.argv) != 2:
         print('usage: graph <graph-properties-file>')
+        exit()
 
     graph_properties = sys.argv[1]
     with open(graph_properties) as f:
@@ -194,11 +205,13 @@ if __name__ == '__main__':
     print('creating adjacencies matrices')
     matrices = adjacencies_matrices(users_map, data_dir, matrices_file)
 
-    # create graph file
+    # create graph files
     node_size_func = def_node_size
     node_color_func = def_node_color
+    node_label_func = def_node_label
 
     print('writing graph files')
     for key, name in zip(adjacency_types, graphs_names):
         graph_file = os.path.join(graph_dir, name)
-        write_gexf_format(graph_file, matrices[key], users_map, node_size_func, node_color_func)
+        write_gexf_format(graph_file, matrices[key], users_map, node_size_func, node_color_func,
+                          node_label_func)
