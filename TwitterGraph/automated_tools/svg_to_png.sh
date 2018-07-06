@@ -10,7 +10,7 @@ if [ ! -f "$in" ] || [ -z "$out" ] ; then
 fi
 
 if [ -z $dpi ]; then
-    dpi="100"
+    dpi="50"
 fi
 
 inkscape --export-png="$out" --export-dpi=$dpi --without-gui --export-background=black "$in"

@@ -20,6 +20,10 @@ import org.gephi.statistics.plugin.PageRank;
 
 public class CreateGraphs
 {
+    // this program loads multiple .gexf files into one .gephi file (each gexf in different workspace).
+    // Compute modularity+PageRank and run forceAtlas for each graph.
+
+
     public static void main(String[] args)
     {
         String[] graphFilepaths = {"gexf/all.gexf", "gexf/retweet.gexf", "gexf/quote.gexf", "gexf/reply.gexf", "gexf/like.gexf"};

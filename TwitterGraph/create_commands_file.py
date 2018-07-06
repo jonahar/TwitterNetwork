@@ -31,6 +31,7 @@ def write_commands(users: set, commands_file: str):
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         print('usage: create_commands_file <graph-properties-file>')
+        exit()
     graph_properties = sys.argv[1]
     with open(graph_properties) as f:
         d = json.load(f)
