@@ -1,5 +1,6 @@
-import markov_clustering as mc
 import numpy as np
+
+from markov_clustering import mcl
 
 # RGB tuples
 COLORS = [(60, 180, 75),  # Green
@@ -20,7 +21,9 @@ COLORS = [(60, 180, 75),  # Green
           (170, 255, 195),  # Mint
           (128, 128, 0),  # Olive
           (255, 215, 180),  # Coral
-          (0, 0, 128)]  # Navy
+          (0, 0, 128),  # Navy
+          (255, 20, 147)  # deep pink
+          ]
 DEF_COLOR = (128, 128, 128)  # gray
 
 
@@ -29,9 +32,9 @@ def mcl_cluster(matrix, expansion, inflation):
     :param matrix: adjacency matrix
     :return: list of tuples. each tuple are ids of nodes in the same cluster
     """
-    result = mc.run_mcl(matrix, expansion=expansion, inflation=inflation, iterations=600,
-                        verbose=True)
-    clusters = mc.get_clusters(result)
+    result = mcl.run_mcl(matrix, expansion=expansion, inflation=inflation, iterations=600,
+                         verbose=True)
+    clusters = mcl.get_clusters(result)
     return clusters
 
 
@@ -147,7 +150,7 @@ def get_modularity2(adjacency, clusters):
 
 def get_modularity3(adjacency, clusters):
     """
-    yet another, INEFFICIENT for large networks, way of computing modularity.
+    yet another way of computing modularity (INEFFICIENT for large networks).
     """
 
     rows, cols = adjacency.shape
@@ -162,3 +165,57 @@ def get_modularity3(adjacency, clusters):
                 sum += adjacency[i, j] - (degrees[i] * degrees[j]) / total_weight
     sum = sum / total_weight
     return sum
+
+
+def def_node_size(screen_name):
+    return 1
+
+
+def def_node_color(screen_name):
+    return 0, 0, 0
+
+
+def def_node_label(screen_name):
+    return screen_name
+
+
+def write_gexf_format(graph_file, adjacency, users_map, node_size=def_node_size,
+                      node_color=def_node_color, node_label=def_node_label,
+                      label_size_threshold=-1):
+    """
+    writes a graph file in gexf format
+    :param graph_file: output file
+    :param adjacency: sparse numpy matrix
+    :param users_map: dictionary, mapping screen_name to (serial, followers_count)
+    :param node_size: function that takes a screen name and returns the size of this user's node.
+    :param node_color: function that takes a screen name and returns the color of this user's node.
+                       color is a string with 6 letters, representing RGB color in hex format
+    :param node_label: function that takes a screen name and returns the label for this node
+    :param label_size_threshold: write label only to nodes whose size is at least this threshold
+    :return:
+    """
+    graph = open(graph_file, mode='w')
+    graph.write("""<?xml version="1.0" encoding="UTF-8"?>
+    <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.1draft/viz" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gexf.net/1.2draft http://www.gexf.net/1.2draft/gexf.xsd" version="1.2">
+    <graph mode="static" defaultedgetype="directed">
+    """)
+    graph.write('<nodes>\n')
+    for user_name in users_map:
+        id = users_map[user_name][SERIAL_IDX]
+        size = node_size(user_name)
+        r, g, b = node_color(user_name)
+        label = '' if size < label_size_threshold else node_label(user_name)
+        graph.write('<node id="{0}" label="{1}">\n'.format(id, label))
+        graph.write('<viz:size value="{0}"></viz:size>\n'.format(size))
+        graph.write('<viz:color r="{0}" g="{1}" b="{2}" a="1"/>'.format(r, g, b))
+        graph.write('</node>\n')
+    graph.write('</nodes>\n')
+    graph.write('<edges>\n')
+    # iterate over all non-zero elements in the adjacency matrix
+    for i, j in zip(*adjacency.nonzero()):
+        graph.write('<edge source="{0}" target="{1}" weight="{2}"/>\n'.format(i, j,
+                                                                              adjacency[i, j]))
+    graph.write('</edges>\n')
+    graph.write('</graph>\n')
+    graph.write('</gexf>\n')
+    graph.close()

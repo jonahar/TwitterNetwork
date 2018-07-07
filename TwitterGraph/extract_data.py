@@ -9,6 +9,10 @@ from scipy.sparse import lil_matrix
 
 from TwitterMine.utils import RETWEET, QUOTE, REPLY
 
+usage = 'Usage: extract_data <graph-properties-file>'
+help = 'This script reads the data dir and creates a network_file and matrices_file ' \
+       '(corresponding to the files specified in graph_properties.json)'
+
 SERIAL_IDX = 0
 FOLLOWERS_COUNT_IDX = 1
 
@@ -16,21 +20,6 @@ LIKE = 4
 ALL = 5
 adjacency_types = [RETWEET, QUOTE, REPLY, LIKE, ALL]
 assert len(adjacency_types) == len(set(adjacency_types))  # unique value for each
-graphs_names = ['retweet.gexf', 'quote.gexf', 'reply.gexf', 'like.gexf', 'all.gexf']
-
-MAX_NODE_SIZE = 100
-
-
-def def_node_size(screen_name):
-    return 1
-
-
-def def_node_color(screen_name):
-    return 0, 0, 0
-
-
-def def_node_label(screen_name):
-    return screen_name
 
 
 def network_users(data_dir, necessary_files, network_file):
@@ -42,7 +31,7 @@ def network_users(data_dir, necessary_files, network_file):
 
     :param data_dir:
     :param necessary_files: list of filenames
-    :param network_file:
+    :param network_file: users_map json file (will be created if doesn't exist)
     :return: a dictionary mapping  screen name to tuple (serial, followers_count)
     """
     if os.path.isfile(network_file):
@@ -78,14 +67,14 @@ def adjacencies_matrices(users_map, data_dir, matrices_file):
 
     If matrices_file exists, read matrices from file and return them
 
-    :param users_map:
-    :param data_dir:
+    :param users_map: dictionary returned by network_users()
+    :param data_dir: path to the data dir
     :return: dictionary with keys RETWEET, QUOTE, REPLY, LIKE, ALL. Values are sparse matrices that
              correspond to the relevant neighborship type
     """
     if os.path.isfile(matrices_file):
         data = np.load(matrices_file)
-        # numpy loads sparse matrices with 0 dimensoins. the weird [()] fixes this
+        # numpy loads sparse matrices with 0 dimensions. the weird [()] fixes this
         matrices = {RETWEET: data['retweet'][()],
                     QUOTE: data['quote'][()],
                     REPLY: data['reply'][()],
@@ -137,81 +126,26 @@ def adjacencies_matrices(users_map, data_dir, matrices_file):
     return matrices
 
 
-def write_gexf_format(graph_file, adjacency, users_map, node_size=def_node_size,
-                      node_color=def_node_color, node_label=def_node_label,
-                      label_size_threshold=-1):
-    """
-    writes a graph file in gexf format
-    :param graph_file: output file
-    :param adjacency: sparse numpy matrix
-    :param users_map: dictionary, mapping screen_name to (serial, followers_count)
-    :param node_size: function that takes a screen name and returns the size of this user's node.
-    :param node_color: function that takes a screen name and returns the color of this user's node.
-                       color is a string with 6 letters, representing RGB color in hex format
-    :param node_label: function that takes a screen name and returns the label for this node
-    :param label_size_threshold: write label only to nodes whose size is at least this threshold
-    :return:
-    """
-    graph = open(graph_file, mode='w')
-    graph.write("""<?xml version="1.0" encoding="UTF-8"?>
-    <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.1draft/viz" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gexf.net/1.2draft http://www.gexf.net/1.2draft/gexf.xsd" version="1.2">
-    <graph mode="static" defaultedgetype="directed">
-    """)
-    graph.write('<nodes>\n')
-    for user_name in users_map:
-        id = users_map[user_name][SERIAL_IDX]
-        size = node_size(user_name)
-        r, g, b = node_color(user_name)
-        label = '' if size < label_size_threshold else node_label(user_name)
-        graph.write('<node id="{0}" label="{1}">\n'.format(id, label))
-        graph.write('<viz:size value="{0}"></viz:size>\n'.format(size))
-        graph.write('<viz:color r="{0}" g="{1}" b="{2}" a="1"/>'.format(r, g, b))
-        graph.write('</node>\n')
-    graph.write('</nodes>\n')
-    graph.write('<edges>\n')
-    # iterate over all non-zero elements in the adjacency matrix
-    for i, j in zip(*adjacency.nonzero()):
-        graph.write('<edge source="{0}" target="{1}" weight="{2}"/>\n'.format(i, j,
-                                                                              adjacency[i, j]))
-    graph.write('</edges>\n')
-    graph.write('</graph>\n')
-    graph.write('</gexf>\n')
-    graph.close()
-
-
-"""
-This script reads the data dir, creates 5 adjacencies matrices and writes 5 gexf files. 
-"""
 if __name__ == '__main__':
-
     if len(sys.argv) != 2:
-        print('usage: graph <graph-properties-file>')
+        print(usage)
+        print()
+        print(help)
         exit()
 
     graph_properties = sys.argv[1]
     with open(graph_properties) as f:
         d = json.load(f)
         data_dir = d['data_dir']
-        network_filename = d['network_filename']
+        network_file = d['network_file']
         necessary_files = d['necessary_files']
         matrices_file = d['matrices_file']
         graph_dir = d['graph_dir']
 
     print('creating users map')
-    users_map = network_users(data_dir, necessary_files, network_filename)
-    most_followed = max(users_map, key=lambda k: users_map[k][FOLLOWERS_COUNT_IDX])
-    max_followers_count = users_map[most_followed][FOLLOWERS_COUNT_IDX]
+    users_map = network_users(data_dir, necessary_files, network_file)
+    # most_followed = max(users_map, key=lambda k: users_map[k][FOLLOWERS_COUNT_IDX])
+    # max_followers_count = users_map[most_followed][FOLLOWERS_COUNT_IDX]
 
     print('creating adjacencies matrices')
     matrices = adjacencies_matrices(users_map, data_dir, matrices_file)
-
-    # create graph files
-    node_size_func = def_node_size
-    node_color_func = def_node_color
-    node_label_func = def_node_label
-
-    print('writing graph files')
-    for key, name in zip(adjacency_types, graphs_names):
-        graph_file = os.path.join(graph_dir, name)
-        write_gexf_format(graph_file, matrices[key], users_map, node_size_func, node_color_func,
-                          node_label_func)
