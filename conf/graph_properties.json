@@ -3,7 +3,7 @@
   "results_file": "/path/to/search-results",
   "commands_file": "/path/to/client-commands",
   "matrices_file": "/path/to/matrices.npz",
-  "network_filename": "/path/to/network_users.json",
+  "network_file": "/path/to/network_users.json",
   "necessary_files": [
     "user_details"
   ],

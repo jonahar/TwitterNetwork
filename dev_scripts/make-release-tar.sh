@@ -1,8 +1,8 @@
 #!/bin/bash
 # create a release tarball
 #
-# usage "make_release_tar <version>"
-# e.g. "make_release_tar 0.1"
+# usage "make-release-tar.sh <version>"
+# e.g. "make-release-tar.sh 0.1"
 
 
 version="$1"
