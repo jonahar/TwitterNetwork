@@ -1,3 +1,7 @@
 [submodule "TwitterAPI"]
 	path = TwitterAPI
 	url = git@github.com:jonahar/TwitterAPI.git
+[submodule "markov_clustering"]
+	path = markov_clustering
+	url = https://github.com/jonahar/markov_clustering.git
+	branch = minimal
