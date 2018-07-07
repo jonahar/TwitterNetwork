@@ -13,4 +13,5 @@ fi
 tar_name="TwitterNetwork-v${version}.tar.gz"
 
 
-tar -czvf "$tar_name" TwitterAPI/*.py TwitterMine/*.py conf/* TwitterGraph/*.py TwitterGraph/gephi_automated/* clustering/*.py
+tar -czvf "$tar_name" TwitterAPI/*.py TwitterGraph/*.py TwitterGraph/automated_tools/* \
+                      TwitterMine/*.py conf/* markov_clustering/* README.md
