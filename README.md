@@ -71,8 +71,11 @@ python3 -m TwitterMine.daemon [OPTIONS]
 python3 -m TwitterMine.client -s <client-commands-file> -c <client-config-file>
 ```
 
-4. When daemon finished downloading all required data, build the graph files
+4. When daemon finished downloading all required data, extract data from the data_dir and prepare
+the necessary files for writing the graph files.
 
-`python3 -m TwitterGraph.graph <graph-properties-file>`
+`python3 -m TwitterGraph.extract_data <graph-properties-file>`
 
+5. Run MCL to find a clustering of the network and write the final gexf file
 
+`python3 -m TwitterGraph.mcl_graph [OPTIONS]`
