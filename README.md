@@ -4,7 +4,9 @@ external tools such as gephi).
 Its 2 main parts are TwitterMine and TwitterGraph.  
   
 TwitterNetwork depends on a forked version of TwitterAPI, so be sure to get the correct version which
-exists here as a submodule. The most easy way to set things up is to download the release tarball from the [Releases](https://github.com/jonahar/TwitterNetwork/releases) page.
+exists here as a submodule. The quickest way to set things up is to download the release tarball from the [Releases](https://github.com/jonahar/TwitterNetwork/releases) page.
+
+**TwitterNetwork** was used in the work on [this post](https://medium.com/@avivzohar/the-cryptocurrency-filter-bubble-faa0901f0e0a).
 
 
 ## TwitterMine
